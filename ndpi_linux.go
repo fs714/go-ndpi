@@ -3,12 +3,14 @@ package main
 /*
 #cgo CFLAGS: -I/usr/include/
 #cgo LDFLAGS: -Wl,-Bstatic -lndpi -lmaxminddb -Wl,-Bdynamic -lpcap -lm -pthread
-#include <ndpi_linux.h>
+#include "ndpi_linux.h"
 */
 import "C"
 
 import (
+	"fmt"
 	"sync"
+	"unsafe"
 
 	"github.com/pkg/errors"
 )
@@ -66,6 +68,11 @@ func FreeNdpiFlowHandle(h *NdpiFlowHandle) {
 	C.free_ndpi_flow(h.ndpiFlow)
 }
 
-func main() {
-	println("Hello")
+func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket []byte, ipPacketLen uint16, ts int) {
+	ipPktPtr := (*C.u_char)(unsafe.Pointer(&ipPacket[0]))
+	ipPktLen := C.ushort(ipPacketLen)
+	ipPktTs := C.uint64_t(ts)
+
+	proto := C.ndpi_packet_processing(handle.ndpi, ndpiFlow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
+	fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
 }
