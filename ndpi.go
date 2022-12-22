@@ -76,3 +76,9 @@ func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket
 	proto := C.ndpi_packet_processing(handle.ndpi, ndpiFlow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
 	fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
 }
+
+func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {
+	id := C.ndpi_category_to_id(category)
+
+	return uint16(id)
+}

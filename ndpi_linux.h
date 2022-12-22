@@ -9,3 +9,4 @@ extern struct ndpi_proto ndpi_packet_processing(struct ndpi_detection_module_str
                                                 const unsigned char *,
                                                 const unsigned short,
                                                 const u_int64_t);
+extern u_int16_t ndpi_category_to_id(ndpi_protocol_category_t);
