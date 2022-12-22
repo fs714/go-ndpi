@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"sync"
@@ -124,6 +125,7 @@ func main() {
 	var ci gopacket.CaptureInfo
 	var fp FlowFingerprint
 	var flowInfo *FlowInfo
+	var ndpiProto NdpiProto
 	var ts int
 	var ipData []byte
 	var ipLength uint16
@@ -182,7 +184,22 @@ func main() {
 					// ipData := make([]byte, len(eth.Payload))
 					// copy(ipData, eth.Payload)
 
-					NdpiPacketProcessing(ndpiHandle, flowInfo.NdpiFlow, ipData, ipLength, ts)
+					ndpiProto = NdpiPacketProcessing(ndpiHandle, flowInfo.NdpiFlow, ipData, ipLength, ts)
+					if ndpiProto.MasterProtocolId != NDPI_PROTOCOL_UNKNOWN || ndpiProto.AppProtocolId != NDPI_PROTOCOL_UNKNOWN {
+						flowInfo.NdpiDetectionCompleted = true
+						FreeNdpiFlowHandle(flowInfo.NdpiFlow)
+
+						masterProto := NdpiProtocolIdMap[ndpiProto.MasterProtocolId]
+						appProt := NdpiProtocolIdMap[ndpiProto.AppProtocolId]
+						category := NdpiCategoryIdMap[ndpiProto.CategoryId]
+
+						fmt.Println("------")
+						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProt, category)
+						fpJson, _ := json.MarshalIndent(fp, "", "  ")
+						flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
+						fmt.Println(string(fpJson))
+						fmt.Println(string(flowInfoJson))
+					}
 				}
 
 				flowInfo.Mu.Unlock()

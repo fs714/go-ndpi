@@ -90,7 +90,7 @@ const (
 	CUSTOM_CATEGORY_ANTIMALWARE               = 105
 )
 
-var NdpiCategoryIdMap = map[uint32]Category{
+var NdpiCategoryIdMap = map[uint16]Category{
 	NDPI_PROTOCOL_CATEGORY_UNSPECIFIED:        CATEGORY_UNSPECIFIED,
 	NDPI_PROTOCOL_CATEGORY_MEDIA:              CATEGORY_MEDIA,
 	NDPI_PROTOCOL_CATEGORY_VPN:                CATEGORY_VPN,

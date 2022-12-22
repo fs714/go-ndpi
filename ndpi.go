@@ -8,7 +8,6 @@ package main
 import "C"
 
 import (
-	"fmt"
 	"sync"
 	"unsafe"
 
@@ -30,6 +29,12 @@ type NdpiHandle struct {
 type NdpiFlowHandle struct {
 	ndpiFlow ndpiFlowStructPtr
 	mu       sync.Mutex
+}
+
+type NdpiProto struct {
+	MasterProtocolId uint16
+	AppProtocolId    uint16
+	CategoryId       uint16
 }
 
 func NdpiHandleInitialize() (*NdpiHandle, error) {
@@ -68,13 +73,21 @@ func FreeNdpiFlowHandle(h *NdpiFlowHandle) {
 	C.free_ndpi_flow(h.ndpiFlow)
 }
 
-func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket []byte, ipPacketLen uint16, ts int) {
+func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket []byte, ipPacketLen uint16, ts int) NdpiProto {
 	ipPktPtr := (*C.u_char)(unsafe.Pointer(&ipPacket[0]))
 	ipPktLen := C.ushort(ipPacketLen)
 	ipPktTs := C.uint64_t(ts)
 
 	proto := C.ndpi_packet_processing(handle.ndpi, ndpiFlow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
-	fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
+	// fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
+
+	ndpiProto := NdpiProto{
+		MasterProtocolId: uint16(proto.master_protocol),
+		AppProtocolId:    uint16(proto.app_protocol),
+		CategoryId:       NdpiCategoryToId(proto.category),
+	}
+
+	return ndpiProto
 }
 
 func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {

@@ -618,7 +618,7 @@ const (
 	NDPI_PROTOCOL_ULTRASURF            = 304
 )
 
-var NdpiProtocolIdMap = map[uint32]Protocol{
+var NdpiProtocolIdMap = map[uint16]Protocol{
 	NDPI_PROTOCOL_UNKNOWN:              PROTO_UNKNOWN,
 	NDPI_PROTOCOL_FTP_CONTROL:          PROTO_FTP_CONTROL,
 	NDPI_PROTOCOL_MAIL_POP:             PROTO_MAIL_POP,
