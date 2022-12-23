@@ -63,8 +63,3 @@ extern struct ndpi_proto ndpi_packet_processing(struct ndpi_detection_module_str
 
     return proto;
 }
-
-extern u_int16_t ndpi_category_to_id(ndpi_protocol_category_t category) {
-    u_int16_t id = (u_int16_t)category;
-    return id;
-}

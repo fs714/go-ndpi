@@ -193,8 +193,25 @@ func main() {
 						appProt := NdpiProtocolIdMap[ndpiProto.AppProtocolId]
 						category := NdpiCategoryIdMap[ndpiProto.CategoryId]
 
+						detectedProtocolStack := flowInfo.NdpiFlow.GetDetectedProtocolStack()
+						processedPktNum := flowInfo.NdpiFlow.GetProcessedPktNum()
+						flowExtraInfo := flowInfo.NdpiFlow.GetFlowExtraInfo()
+						hostServerName := flowInfo.NdpiFlow.GetHostServerName()
+						http := flowInfo.NdpiFlow.GetHttp()
+						protocolCategory := flowInfo.NdpiFlow.GetProtocolCategory()
+
 						fmt.Println("------")
 						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProt, category)
+
+						fmt.Printf("Detected Protocol Stack: %s, %s\n", NdpiProtocolIdMap[detectedProtocolStack[0]], NdpiProtocolIdMap[detectedProtocolStack[1]])
+						fmt.Printf("Processed Pkt Num: %d\n", processedPktNum)
+						fmt.Printf("Flow Extra Info: %s\n", flowExtraInfo)
+						fmt.Printf("Host Server Name: %s\n", hostServerName)
+						httpJson, _ := json.MarshalIndent(http, "", "  ")
+						fmt.Printf("http struct:\n%s\n", string(httpJson))
+						fmt.Printf("Http Method: %s, Http Request Version: %s\n", NdpiHttpMethodIdMap[http.NdpiHttpMethod], NdpiHttpRequestVersionIdMap[http.RequestVersion])
+						fmt.Printf("Protocol Category: %s\n", NdpiCategoryIdMap[protocolCategory])
+
 						fpJson, _ := json.MarshalIndent(fp, "", "  ")
 						flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
 						fmt.Println(string(fpJson))

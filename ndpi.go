@@ -31,6 +31,44 @@ type NdpiFlowHandle struct {
 	mu       sync.Mutex
 }
 
+func (f *NdpiFlowHandle) GetDetectedProtocolStack() [2]uint16 {
+	protoStack := [2]uint16{}
+	protoStack[0] = uint16(f.ndpiFlow.detected_protocol_stack[0])
+	protoStack[1] = uint16(f.ndpiFlow.detected_protocol_stack[1])
+
+	return protoStack
+}
+
+func (f *NdpiFlowHandle) GetProcessedPktNum() uint16 {
+	return uint16(f.ndpiFlow.num_processed_pkts)
+}
+
+func (f *NdpiFlowHandle) GetFlowExtraInfo() string {
+	return C.GoString(&f.ndpiFlow.flow_extra_info[0])
+}
+
+func (f *NdpiFlowHandle) GetHostServerName() string {
+	return C.GoString(&f.ndpiFlow.host_server_name[0])
+}
+
+func (f *NdpiFlowHandle) GetHttp() NdpiHttp {
+	return NdpiHttp{
+		NdpiHttpMethod:      uint16(f.ndpiFlow.http.method),
+		RequestVersion:      uint8(f.ndpiFlow.http.request_version),
+		ResponseStatusCode:  uint16(f.ndpiFlow.http.response_status_code),
+		Url:                 C.GoString(f.ndpiFlow.http.url),
+		RequestContentType:  C.GoString(f.ndpiFlow.http.request_content_type),
+		ResponseContentType: C.GoString(f.ndpiFlow.http.content_type),
+		UserAgent:           C.GoString(f.ndpiFlow.http.user_agent),
+		DetectedOs:          C.GoString(f.ndpiFlow.http.detected_os),
+		XForwardedAddr:      C.GoString(f.ndpiFlow.http.nat_ip),
+	}
+}
+
+func (f *NdpiFlowHandle) GetProtocolCategory() uint16 {
+	return NdpiCategoryToId(f.ndpiFlow.category)
+}
+
 type NdpiProto struct {
 	MasterProtocolId uint16
 	AppProtocolId    uint16
@@ -91,7 +129,5 @@ func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket
 }
 
 func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {
-	id := C.ndpi_category_to_id(category)
-
-	return uint16(id)
+	return uint16(category)
 }
