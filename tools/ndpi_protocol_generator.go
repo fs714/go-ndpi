@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const PackageName = "main"
+const PackageName = "gondpi"
 const NdpiProtocolPrefix = "NDPI_PROTOCOL_"
 
 var ndpi_protocol_ids_header_path string
@@ -77,7 +77,7 @@ func generateGolangCode(protocolVarList []string, protocolIdList []int, protocol
 	}
 	builder.WriteString(")\n\n")
 
-	builder.WriteString("var NdpiProtocolIdMap = map[uint32]Protocol{\n")
+	builder.WriteString("var NdpiProtocolIdMap = map[uint16]Protocol{\n")
 	for idx, v := range protocolVarList {
 		builder.WriteString("    " + v + ": PROTO_" + protocolNameList[idx] + ",\n")
 	}

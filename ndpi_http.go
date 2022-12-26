@@ -1,4 +1,4 @@
-package main
+package gondpi
 
 type HttpMethod string
 

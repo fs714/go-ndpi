@@ -1,4 +1,4 @@
-package main
+package gondpi
 
 /*
 #cgo CFLAGS: -I/usr/include/
