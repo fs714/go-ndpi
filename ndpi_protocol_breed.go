@@ -1,0 +1,36 @@
+package gondpi
+
+type ProtocolBreed string
+
+const (
+	PROTOCOL_SAFE                  ProtocolBreed = "SAFE"
+	PROTOCOL_ACCEPTABLE            ProtocolBreed = "ACCEPTABLE"
+	PROTOCOL_FUN                   ProtocolBreed = "FUN"
+	PROTOCOL_UNSAFE                ProtocolBreed = "UNSAFE"
+	PROTOCOL_POTENTIALLY_DANGEROUS ProtocolBreed = "POTENTIALLY_DANGEROUS"
+	PROTOCOL_DANGEROUS             ProtocolBreed = "DANGEROUS"
+	PROTOCOL_TRACKER_ADS           ProtocolBreed = "TRACKER_ADS"
+	PROTOCOL_UNRATED               ProtocolBreed = "UNRATED"
+)
+
+const (
+	NDPI_PROTOCOL_SAFE                  = 0
+	NDPI_PROTOCOL_ACCEPTABLE            = 1
+	NDPI_PROTOCOL_FUN                   = 2
+	NDPI_PROTOCOL_UNSAFE                = 3
+	NDPI_PROTOCOL_POTENTIALLY_DANGEROUS = 4
+	NDPI_PROTOCOL_DANGEROUS             = 5
+	NDPI_PROTOCOL_TRACKER_ADS           = 6
+	NDPI_PROTOCOL_UNRATED               = 7
+)
+
+var NdpiProtocolBreedIdMap = map[uint16]ProtocolBreed{
+	NDPI_PROTOCOL_SAFE:                  PROTOCOL_SAFE,
+	NDPI_PROTOCOL_ACCEPTABLE:            PROTOCOL_ACCEPTABLE,
+	NDPI_PROTOCOL_FUN:                   PROTOCOL_FUN,
+	NDPI_PROTOCOL_UNSAFE:                PROTOCOL_UNSAFE,
+	NDPI_PROTOCOL_POTENTIALLY_DANGEROUS: PROTOCOL_POTENTIALLY_DANGEROUS,
+	NDPI_PROTOCOL_DANGEROUS:             PROTOCOL_DANGEROUS,
+	NDPI_PROTOCOL_TRACKER_ADS:           PROTOCOL_TRACKER_ADS,
+	NDPI_PROTOCOL_UNRATED:               PROTOCOL_UNRATED,
+}

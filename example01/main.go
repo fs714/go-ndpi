@@ -1,3 +1,11 @@
+/*
+Example of simple uage:
+- Packet Capture by libpcap
+- Packet L2 - L4 inspection by gopacket
+- Packet L7 inspection by nDPI
+- Golang map for flow recording
+*/
+
 package main
 
 import (
@@ -106,7 +114,9 @@ func main() {
 
 	defer handle.Close()
 
-	ndpiHandle, err := gondpi.NdpiHandleInitialize()
+	detectionBitmask := gondpi.NewNdpiProtocolBitmask()
+	detectionBitmask = gondpi.NdpiProtocolBitmaskSetAll(detectionBitmask)
+	ndpiHandle, err := gondpi.NdpiHandleInitialize(detectionBitmask)
 	if err != nil {
 		fmt.Printf("failed to initialize NdpiHandle with err: %s\n", err.Error())
 		return
