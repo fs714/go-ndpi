@@ -1,4 +1,4 @@
-package gondpi
+package types
 
 type Category string
 

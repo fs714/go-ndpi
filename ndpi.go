@@ -12,6 +12,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/fs714/go-ndpi/types"
 	"github.com/pkg/errors"
 )
 
@@ -141,7 +142,7 @@ func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
 
 		npd := NdpiProtoDefaults{
 			ProtoName:        C.GoString(pds[i].protoName),
-			ProtoCategory:    string(NdpiCategoryIdMap[uint16(pds[i].protoCategory)]),
+			ProtoCategory:    string(types.NdpiCategoryIdMap[uint16(pds[i].protoCategory)]),
 			IsClearTextProto: isClearTextProtoList[i],
 			IsAppProtocol:    isAppProtocolList[i],
 			SubProtocols:     subProtocols,
@@ -149,7 +150,7 @@ func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
 			ProtoIdx:         uint16(pds[i].protoIdx),
 			TcpDefaultPorts:  tcpDefaultPorts,
 			UdpDefaultPorts:  udpDefaultPorts,
-			ProtoBreed:       string(NdpiProtocolBreedIdMap[uint16(pds[i].protoBreed)]),
+			ProtoBreed:       string(types.NdpiProtocolBreedIdMap[uint16(pds[i].protoBreed)]),
 		}
 
 		npds = append(npds, npd)
@@ -183,8 +184,8 @@ func (f *NdpiFlowHandle) GetHostServerName() string {
 	return C.GoString(&f.ndpiFlow.host_server_name[0])
 }
 
-func (f *NdpiFlowHandle) GetHttp() NdpiHttp {
-	return NdpiHttp{
+func (f *NdpiFlowHandle) GetHttp() types.NdpiHttp {
+	return types.NdpiHttp{
 		NdpiHttpMethod:      uint16(f.ndpiFlow.http.method),
 		RequestVersion:      uint8(f.ndpiFlow.http.request_version),
 		ResponseStatusCode:  uint16(f.ndpiFlow.http.response_status_code),

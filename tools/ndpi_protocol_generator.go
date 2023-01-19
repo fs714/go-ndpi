@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const PackageName = "gondpi"
+const PackageName = "types"
 const NdpiProtocolPrefix = "NDPI_PROTOCOL_"
 
 var ndpi_protocol_ids_header_path string
