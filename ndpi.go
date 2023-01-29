@@ -18,42 +18,48 @@ import (
 
 const (
 	NdpiFlowStructSize uint32 = uint32(C.SIZEOF_FLOW_STRUCT)
+
+	NdpiBitmaskSize = 16
 )
 
 type ndpiStructPtr *C.struct_ndpi_detection_module_struct
 type ndpiFlowStructPtr *C.struct_ndpi_flow_struct
 
 func NewNdpiProtocolBitmask() []uint32 {
-	return make([]uint32, 16)
+	return make([]uint32, NdpiBitmaskSize)
 }
 
 func NdpiProtocolBitmaskAdd(bitmask []uint32, proto uint16) []uint32 {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[16]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
 	C.ndpi_protocol_bitmask_add(ndpiBitmask, C.uint16_t(proto))
 
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
-	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits))
+	sliceHeader.Len = NdpiBitmaskSize
+	sliceHeader.Cap = NdpiBitmaskSize
+	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
 
 	return bitmask
 }
 
 func NdpiProtocolBitmaskDel(bitmask []uint32, proto uint16) []uint32 {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[16]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
 	C.ndpi_protocol_bitmask_del(ndpiBitmask, C.uint16_t(proto))
 
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
-	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits))
+	sliceHeader.Len = NdpiBitmaskSize
+	sliceHeader.Cap = NdpiBitmaskSize
+	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
 
 	return bitmask
 }
 
 func NdpiProtocolBitmaskIsSet(bitmask []uint32, proto uint16) bool {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[16]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
 	ndpiIsSet := C.ndpi_protocol_bitmask_is_set(ndpiBitmask, C.uint16_t(proto))
 
@@ -62,24 +68,28 @@ func NdpiProtocolBitmaskIsSet(bitmask []uint32, proto uint16) bool {
 
 func NdpiProtocolBitmaskReset(bitmask []uint32) []uint32 {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[16]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
 	C.ndpi_protocol_bitmask_reset(ndpiBitmask)
 
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
-	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits))
+	sliceHeader.Len = NdpiBitmaskSize
+	sliceHeader.Cap = NdpiBitmaskSize
+	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
 
 	return bitmask
 }
 
 func NdpiProtocolBitmaskSetAll(bitmask []uint32) []uint32 {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[16]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
 	C.ndpi_protocol_bitmask_set_all(ndpiBitmask)
 
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
-	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits))
+	sliceHeader.Len = NdpiBitmaskSize
+	sliceHeader.Cap = NdpiBitmaskSize
+	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
 
 	return bitmask
 }
@@ -210,7 +220,7 @@ type NdpiProto struct {
 
 func NdpiHandleInitialize(detectionBitmask []uint32) (*NdpiHandle, error) {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[16]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
 	ndpi := C.ndpi_struct_initialize(ndpiBitmask)
 	if ndpi == nil {
 		C.ndpi_struct_exit(ndpi)
