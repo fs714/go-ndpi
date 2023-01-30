@@ -141,6 +141,19 @@ func (dm *NdpiDetectionModule) SetDebugBitmask(debugBitmask []uint32) {
 	C.ndpi_set_debug_bitmask(dm.ndpi, ndpiBitmask)
 }
 
+func (dm *NdpiDetectionModule) LoadProtocolsFile(path string) error {
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+
+	ret := C.ndpi_load_protocols_file(dm.ndpi, cPath)
+	if int(ret) != 0 {
+		err := errors.New("failed to load protocols file")
+		return err
+	}
+
+	return nil
+}
+
 func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 	isClearTextProtoList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 	isAppProtocolList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
