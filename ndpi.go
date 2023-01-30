@@ -116,7 +116,7 @@ func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
 	isClearTextProtoList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 	isAppProtocolList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 
-	protoDefaults := C.ndpi_get_proto_defaults_wrapper(h.ndpi, (*C.bool)(unsafe.Pointer(&isClearTextProtoList[0])),
+	protoDefaults := C.ndpi_proto_defaults_get(h.ndpi, (*C.bool)(unsafe.Pointer(&isClearTextProtoList[0])),
 		(*C.bool)(unsafe.Pointer(&isAppProtocolList[0])))
 	pds := make([]C.ndpi_proto_defaults_t, 0)
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&pds)))
@@ -221,9 +221,9 @@ type NdpiProto struct {
 func NdpiHandleInitialize(detectionBitmask []uint32) (*NdpiHandle, error) {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
 	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
-	ndpi := C.ndpi_struct_initialize(ndpiBitmask)
+	ndpi := C.ndpi_detection_module_initialize(ndpiBitmask)
 	if ndpi == nil {
-		C.ndpi_struct_exit(ndpi)
+		C.ndpi_detection_module_exit(ndpi)
 		err := errors.New("null ndpi struct")
 		return nil, err
 	}
@@ -235,13 +235,13 @@ func NdpiHandleInitialize(detectionBitmask []uint32) (*NdpiHandle, error) {
 }
 
 func NdpiHandleExit(h *NdpiHandle) {
-	C.ndpi_struct_exit(h.ndpi)
+	C.ndpi_detection_module_exit(h.ndpi)
 }
 
 func GetNdpiFlowHandle() (*NdpiFlowHandle, error) {
-	ndpiFlow := C.get_ndpi_flow()
+	ndpiFlow := C.ndpi_flow_struct_malloc()
 	if ndpiFlow == nil {
-		C.free_ndpi_flow(ndpiFlow)
+		C.ndpi_flow_struct_free(ndpiFlow)
 		err := errors.New("null ndpi flow struct")
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func GetNdpiFlowHandle() (*NdpiFlowHandle, error) {
 }
 
 func FreeNdpiFlowHandle(h *NdpiFlowHandle) {
-	C.free_ndpi_flow(h.ndpiFlow)
+	C.ndpi_flow_struct_free(h.ndpiFlow)
 }
 
 func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket []byte, ipPacketLen uint16, ts int) NdpiProto {
