@@ -6,7 +6,7 @@ extern bool ndpi_protocol_bitmask_is_set(NDPI_PROTOCOL_BITMASK *, uint16_t);
 extern void ndpi_protocol_bitmask_reset(NDPI_PROTOCOL_BITMASK *);
 extern void ndpi_protocol_bitmask_set_all(NDPI_PROTOCOL_BITMASK *);
 
-extern struct ndpi_detection_module_struct *ndpi_detection_module_initialize(NDPI_PROTOCOL_BITMASK *);
+extern struct ndpi_detection_module_struct *ndpi_detection_module_initialize(ndpi_init_prefs, NDPI_PROTOCOL_BITMASK *);
 extern void ndpi_detection_module_exit(struct ndpi_detection_module_struct *);
 extern ndpi_proto_defaults_t *ndpi_proto_defaults_get(struct ndpi_detection_module_struct *, bool *, bool *);
 

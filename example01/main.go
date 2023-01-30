@@ -117,7 +117,7 @@ func main() {
 
 	detectionBitmask := gondpi.NewNdpiProtocolBitmask()
 	detectionBitmask = gondpi.NdpiProtocolBitmaskSetAll(detectionBitmask)
-	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(detectionBitmask)
+	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(types.NDPI_NO_PREFS, detectionBitmask)
 	if err != nil {
 		fmt.Printf("failed to initialize ndpi detection module with err: %s\n", err.Error())
 		return

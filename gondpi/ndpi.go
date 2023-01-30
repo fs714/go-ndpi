@@ -110,10 +110,10 @@ type NdpiDetectionModule struct {
 	mu   sync.Mutex
 }
 
-func NdpiDetectionModuleInitialize(detectionBitmask []uint32) (*NdpiDetectionModule, error) {
+func NdpiDetectionModuleInitialize(prefs uint32, detectionBitmask []uint32) (*NdpiDetectionModule, error) {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
 	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
-	ndpi := C.ndpi_detection_module_initialize(ndpiBitmask)
+	ndpi := C.ndpi_detection_module_initialize(C.ndpi_init_prefs(prefs), ndpiBitmask)
 	if ndpi == nil {
 		C.ndpi_detection_module_exit(ndpi)
 		err := errors.New("null ndpi detection module struct")

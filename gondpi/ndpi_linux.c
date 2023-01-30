@@ -25,13 +25,12 @@ extern void ndpi_protocol_bitmask_set_all(NDPI_PROTOCOL_BITMASK *bitmask)
     NDPI_BITMASK_SET_ALL(*bitmask);
 }
 
-extern struct ndpi_detection_module_struct *ndpi_detection_module_initialize(NDPI_PROTOCOL_BITMASK *detection_bitmask)
+extern struct ndpi_detection_module_struct *ndpi_detection_module_initialize(ndpi_init_prefs prefs, NDPI_PROTOCOL_BITMASK *detection_bitmask)
 {
     set_ndpi_malloc(malloc);
     set_ndpi_free(free);
 
-    ndpi_init_prefs init_prefs = ndpi_no_prefs;
-    struct ndpi_detection_module_struct *ndpi_struct = ndpi_init_detection_module(init_prefs);
+    struct ndpi_detection_module_struct *ndpi_struct = ndpi_init_detection_module(prefs);
     if (ndpi_struct == NULL)
     {
         return NULL;
