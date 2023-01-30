@@ -12,7 +12,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/fs714/go-ndpi/types"
+	"github.com/fs714/go-ndpi/gondpi/types"
 	"github.com/pkg/errors"
 )
 

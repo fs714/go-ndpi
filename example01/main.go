@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	gondpi "github.com/fs714/go-ndpi"
-	"github.com/fs714/go-ndpi/types"
+	"github.com/fs714/go-ndpi/gondpi"
+	"github.com/fs714/go-ndpi/gondpi/types"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
