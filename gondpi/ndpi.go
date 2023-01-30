@@ -110,6 +110,10 @@ type NdpiDetectionModule struct {
 	mu   sync.Mutex
 }
 
+func (dm *NdpiDetectionModule) SetLogLevel(level uint16) {
+	C.ndpi_set_log_level(dm.ndpi, C.uint(level))
+}
+
 func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 	isClearTextProtoList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 	isAppProtocolList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
