@@ -38,14 +38,14 @@ type FlowInfo struct {
 	NdpiProcessedPackets   int64
 	NdpiProcessedBytes     int64
 	NdpiDetectionCompleted bool
-	NdpiFlow               *gondpi.NdpiFlowHandle
+	NdpiFlow               *gondpi.NdpiFlow
 	Mu                     sync.Mutex
 }
 
 func NewFlowInfo() (*FlowInfo, error) {
 	flowInfo := FlowInfo{}
 
-	ndpiFlow, err := gondpi.GetNdpiFlowHandle()
+	ndpiFlow, err := gondpi.NewNdpiFlow()
 	if err != nil {
 		return nil, err
 	}
@@ -117,13 +117,13 @@ func main() {
 
 	detectionBitmask := gondpi.NewNdpiProtocolBitmask()
 	detectionBitmask = gondpi.NdpiProtocolBitmaskSetAll(detectionBitmask)
-	ndpiHandle, err := gondpi.NdpiHandleInitialize(detectionBitmask)
+	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(detectionBitmask)
 	if err != nil {
-		fmt.Printf("failed to initialize NdpiHandle with err: %s\n", err.Error())
+		fmt.Printf("failed to initialize ndpi detection module with err: %s\n", err.Error())
 		return
 	}
 
-	defer gondpi.NdpiHandleExit(ndpiHandle)
+	defer gondpi.NdpiDetectionModuleExit(ndpiDM)
 
 	eth := &layers.Ethernet{}
 	ip4 := &layers.IPv4{}
@@ -196,13 +196,13 @@ func main() {
 					// ipData := make([]byte, len(eth.Payload))
 					// copy(ipData, eth.Payload)
 
-					ndpiProto = gondpi.NdpiPacketProcessing(ndpiHandle, flowInfo.NdpiFlow, ipData, ipLength, ts)
+					ndpiProto = gondpi.NdpiPacketProcessing(ndpiDM, flowInfo.NdpiFlow, ipData, ipLength, ts)
 					if ndpiProto.MasterProtocolId != types.NDPI_PROTOCOL_UNKNOWN || ndpiProto.AppProtocolId != types.NDPI_PROTOCOL_UNKNOWN {
 						flowInfo.NdpiDetectionCompleted = true
-						gondpi.FreeNdpiFlowHandle(flowInfo.NdpiFlow)
+						gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
 
 						masterProto := types.NdpiProtocolIdMap[ndpiProto.MasterProtocolId]
-						appProt := types.NdpiProtocolIdMap[ndpiProto.AppProtocolId]
+						appProto := types.NdpiProtocolIdMap[ndpiProto.AppProtocolId]
 						category := types.NdpiCategoryIdMap[ndpiProto.CategoryId]
 
 						detectedProtocolStack := flowInfo.NdpiFlow.GetDetectedProtocolStack()
@@ -213,7 +213,7 @@ func main() {
 						protocolCategory := flowInfo.NdpiFlow.GetProtocolCategory()
 
 						fmt.Println("------")
-						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProt, category)
+						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
 
 						fmt.Printf("Detected Protocol Stack: %s, %s\n", types.NdpiProtocolIdMap[detectedProtocolStack[0]], types.NdpiProtocolIdMap[detectedProtocolStack[1]])
 						fmt.Printf("Processed Pkt Num: %d\n", processedPktNum)

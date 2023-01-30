@@ -17,12 +17,10 @@ import (
 )
 
 const (
-	NdpiFlowStructSize uint32 = uint32(C.SIZEOF_FLOW_STRUCT)
-
 	NdpiBitmaskSize = 16
 )
 
-type ndpiStructPtr *C.struct_ndpi_detection_module_struct
+type ndpiDetectionModuleStructPtr *C.struct_ndpi_detection_module_struct
 type ndpiFlowStructPtr *C.struct_ndpi_flow_struct
 
 func NewNdpiProtocolBitmask() []uint32 {
@@ -35,7 +33,7 @@ func NdpiProtocolBitmaskAdd(bitmask []uint32, proto uint16) []uint32 {
 
 	C.ndpi_protocol_bitmask_add(ndpiBitmask, C.uint16_t(proto))
 
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&bitmask))
 	sliceHeader.Len = NdpiBitmaskSize
 	sliceHeader.Cap = NdpiBitmaskSize
 	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
@@ -49,7 +47,7 @@ func NdpiProtocolBitmaskDel(bitmask []uint32, proto uint16) []uint32 {
 
 	C.ndpi_protocol_bitmask_del(ndpiBitmask, C.uint16_t(proto))
 
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&bitmask))
 	sliceHeader.Len = NdpiBitmaskSize
 	sliceHeader.Cap = NdpiBitmaskSize
 	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
@@ -72,7 +70,7 @@ func NdpiProtocolBitmaskReset(bitmask []uint32) []uint32 {
 
 	C.ndpi_protocol_bitmask_reset(ndpiBitmask)
 
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&bitmask))
 	sliceHeader.Len = NdpiBitmaskSize
 	sliceHeader.Cap = NdpiBitmaskSize
 	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
@@ -86,17 +84,12 @@ func NdpiProtocolBitmaskSetAll(bitmask []uint32) []uint32 {
 
 	C.ndpi_protocol_bitmask_set_all(ndpiBitmask)
 
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&bitmask)))
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&bitmask))
 	sliceHeader.Len = NdpiBitmaskSize
 	sliceHeader.Cap = NdpiBitmaskSize
 	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
 
 	return bitmask
-}
-
-type NdpiHandle struct {
-	ndpi ndpiStructPtr
-	mu   sync.Mutex
 }
 
 type NdpiProtoDefaults struct {
@@ -112,11 +105,16 @@ type NdpiProtoDefaults struct {
 	ProtoBreed       uint16
 }
 
-func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
+type NdpiDetectionModule struct {
+	ndpi ndpiDetectionModuleStructPtr
+	mu   sync.Mutex
+}
+
+func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 	isClearTextProtoList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 	isAppProtocolList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 
-	protoDefaults := C.ndpi_proto_defaults_get(h.ndpi, (*C.bool)(unsafe.Pointer(&isClearTextProtoList[0])),
+	protoDefaults := C.ndpi_proto_defaults_get(dm.ndpi, (*C.bool)(unsafe.Pointer(&isClearTextProtoList[0])),
 		(*C.bool)(unsafe.Pointer(&isAppProtocolList[0])))
 	pds := make([]C.ndpi_proto_defaults_t, 0)
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&pds)))
@@ -169,12 +167,12 @@ func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
 	return npds
 }
 
-type NdpiFlowHandle struct {
+type NdpiFlow struct {
 	ndpiFlow ndpiFlowStructPtr
 	mu       sync.Mutex
 }
 
-func (f *NdpiFlowHandle) GetDetectedProtocolStack() [2]uint16 {
+func (f *NdpiFlow) GetDetectedProtocolStack() [2]uint16 {
 	protoStack := [2]uint16{}
 	protoStack[0] = uint16(f.ndpiFlow.detected_protocol_stack[0])
 	protoStack[1] = uint16(f.ndpiFlow.detected_protocol_stack[1])
@@ -182,19 +180,19 @@ func (f *NdpiFlowHandle) GetDetectedProtocolStack() [2]uint16 {
 	return protoStack
 }
 
-func (f *NdpiFlowHandle) GetProcessedPktNum() uint16 {
+func (f *NdpiFlow) GetProcessedPktNum() uint16 {
 	return uint16(f.ndpiFlow.num_processed_pkts)
 }
 
-func (f *NdpiFlowHandle) GetFlowExtraInfo() string {
+func (f *NdpiFlow) GetFlowExtraInfo() string {
 	return C.GoString(&f.ndpiFlow.flow_extra_info[0])
 }
 
-func (f *NdpiFlowHandle) GetHostServerName() string {
+func (f *NdpiFlow) GetHostServerName() string {
 	return C.GoString(&f.ndpiFlow.host_server_name[0])
 }
 
-func (f *NdpiFlowHandle) GetHttp() types.NdpiHttp {
+func (f *NdpiFlow) GetHttp() types.NdpiHttp {
 	return types.NdpiHttp{
 		NdpiHttpMethod:      uint16(f.ndpiFlow.http.method),
 		RequestVersion:      uint8(f.ndpiFlow.http.request_version),
@@ -208,7 +206,7 @@ func (f *NdpiFlowHandle) GetHttp() types.NdpiHttp {
 	}
 }
 
-func (f *NdpiFlowHandle) GetProtocolCategory() uint16 {
+func (f *NdpiFlow) GetProtocolCategory() uint16 {
 	return NdpiCategoryToId(f.ndpiFlow.category)
 }
 
@@ -218,27 +216,27 @@ type NdpiProto struct {
 	CategoryId       uint16
 }
 
-func NdpiHandleInitialize(detectionBitmask []uint32) (*NdpiHandle, error) {
+func NdpiDetectionModuleInitialize(detectionBitmask []uint32) (*NdpiDetectionModule, error) {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
 	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
 	ndpi := C.ndpi_detection_module_initialize(ndpiBitmask)
 	if ndpi == nil {
 		C.ndpi_detection_module_exit(ndpi)
-		err := errors.New("null ndpi struct")
+		err := errors.New("null ndpi detection module struct")
 		return nil, err
 	}
 
-	handle := &NdpiHandle{}
-	handle.ndpi = ndpi
+	dm := &NdpiDetectionModule{}
+	dm.ndpi = ndpi
 
-	return handle, nil
+	return dm, nil
 }
 
-func NdpiHandleExit(h *NdpiHandle) {
-	C.ndpi_detection_module_exit(h.ndpi)
+func NdpiDetectionModuleExit(dm *NdpiDetectionModule) {
+	C.ndpi_detection_module_exit(dm.ndpi)
 }
 
-func GetNdpiFlowHandle() (*NdpiFlowHandle, error) {
+func NewNdpiFlow() (*NdpiFlow, error) {
 	ndpiFlow := C.ndpi_flow_struct_malloc()
 	if ndpiFlow == nil {
 		C.ndpi_flow_struct_free(ndpiFlow)
@@ -246,22 +244,22 @@ func GetNdpiFlowHandle() (*NdpiFlowHandle, error) {
 		return nil, err
 	}
 
-	handle := &NdpiFlowHandle{}
-	handle.ndpiFlow = ndpiFlow
+	f := &NdpiFlow{}
+	f.ndpiFlow = ndpiFlow
 
-	return handle, nil
+	return f, nil
 }
 
-func FreeNdpiFlowHandle(h *NdpiFlowHandle) {
-	C.ndpi_flow_struct_free(h.ndpiFlow)
+func FreeNdpiFlow(f *NdpiFlow) {
+	C.ndpi_flow_struct_free(f.ndpiFlow)
 }
 
-func NdpiPacketProcessing(handle *NdpiHandle, ndpiFlow *NdpiFlowHandle, ipPacket []byte, ipPacketLen uint16, ts int) NdpiProto {
+func NdpiPacketProcessing(dm *NdpiDetectionModule, flow *NdpiFlow, ipPacket []byte, ipPacketLen uint16, timestamp int) NdpiProto {
 	ipPktPtr := (*C.u_char)(unsafe.Pointer(&ipPacket[0]))
 	ipPktLen := C.ushort(ipPacketLen)
-	ipPktTs := C.uint64_t(ts)
+	ipPktTs := C.uint64_t(timestamp)
 
-	proto := C.ndpi_packet_processing(handle.ndpi, ndpiFlow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
+	proto := C.ndpi_packet_processing(dm.ndpi, flow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
 	// fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
 
 	ndpiProto := NdpiProto{

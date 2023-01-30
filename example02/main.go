@@ -37,13 +37,13 @@ func main() {
 	detectionBitmask = gondpi.NdpiProtocolBitmaskDel(detectionBitmask, types.NDPI_PROTOCOL_SSH)
 	fmt.Printf("del ssh: %v\n", detectionBitmask)
 
-	ndpiHandle, err := gondpi.NdpiHandleInitialize(detectionBitmask)
+	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(detectionBitmask)
 	if err != nil {
-		fmt.Printf("failed to initialize NdpiHandle with err: %s\n", err.Error())
+		fmt.Printf("failed to initialize ndpi detection module with err: %s\n", err.Error())
 		return
 	}
 
-	npds := ndpiHandle.GetProtoDefaults()
+	npds := ndpiDM.GetProtoDefaults()
 	npdsJson, err := json.MarshalIndent(npds, "", "  ")
 	if err != nil {
 		fmt.Printf("failed to marshal ndpi protocol defaults with err: %s\n", err.Error())
@@ -53,5 +53,5 @@ func main() {
 	fmt.Println(len(npds))
 	fmt.Println(string(npdsJson))
 
-	gondpi.NdpiHandleExit(ndpiHandle)
+	gondpi.NdpiDetectionModuleExit(ndpiDM)
 }
