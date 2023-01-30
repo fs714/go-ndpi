@@ -101,7 +101,7 @@ type NdpiHandle struct {
 
 type NdpiProtoDefaults struct {
 	ProtoName        string
-	ProtoCategory    string
+	ProtoCategory    uint16
 	IsClearTextProto bool
 	IsAppProtocol    bool
 	SubProtocols     []uint16
@@ -109,7 +109,7 @@ type NdpiProtoDefaults struct {
 	ProtoIdx         uint16
 	TcpDefaultPorts  []uint16
 	UdpDefaultPorts  []uint16
-	ProtoBreed       string
+	ProtoBreed       uint16
 }
 
 func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
@@ -142,17 +142,17 @@ func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
 		sliceHeader = (*reflect.SliceHeader)((unsafe.Pointer(&tcpDefaultPorts)))
 		sliceHeader.Cap = C.MAX_DEFAULT_PORTS
 		sliceHeader.Len = C.MAX_DEFAULT_PORTS
-		sliceHeader.Data = uintptr(unsafe.Pointer(&pds[i].tcp_default_ports))
+		sliceHeader.Data = uintptr(unsafe.Pointer(&pds[i].tcp_default_ports[0]))
 
 		udpDefaultPorts := make([]uint16, 0)
 		sliceHeader = (*reflect.SliceHeader)((unsafe.Pointer(&udpDefaultPorts)))
 		sliceHeader.Cap = C.MAX_DEFAULT_PORTS
 		sliceHeader.Len = C.MAX_DEFAULT_PORTS
-		sliceHeader.Data = uintptr(unsafe.Pointer(&pds[i].udp_default_ports))
+		sliceHeader.Data = uintptr(unsafe.Pointer(&pds[i].udp_default_ports[0]))
 
 		npd := NdpiProtoDefaults{
 			ProtoName:        C.GoString(pds[i].protoName),
-			ProtoCategory:    string(types.NdpiCategoryIdMap[uint16(pds[i].protoCategory)]),
+			ProtoCategory:    uint16(pds[i].protoCategory),
 			IsClearTextProto: isClearTextProtoList[i],
 			IsAppProtocol:    isAppProtocolList[i],
 			SubProtocols:     subProtocols,
@@ -160,7 +160,7 @@ func (h *NdpiHandle) GetProtoDefaults() []NdpiProtoDefaults {
 			ProtoIdx:         uint16(pds[i].protoIdx),
 			TcpDefaultPorts:  tcpDefaultPorts,
 			UdpDefaultPorts:  udpDefaultPorts,
-			ProtoBreed:       string(types.NdpiProtocolBreedIdMap[uint16(pds[i].protoBreed)]),
+			ProtoBreed:       uint16(pds[i].protoBreed),
 		}
 
 		npds = append(npds, npd)
