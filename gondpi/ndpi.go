@@ -110,8 +110,35 @@ type NdpiDetectionModule struct {
 	mu   sync.Mutex
 }
 
+func NdpiDetectionModuleInitialize(detectionBitmask []uint32) (*NdpiDetectionModule, error) {
+	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
+	ndpi := C.ndpi_detection_module_initialize(ndpiBitmask)
+	if ndpi == nil {
+		C.ndpi_detection_module_exit(ndpi)
+		err := errors.New("null ndpi detection module struct")
+		return nil, err
+	}
+
+	dm := &NdpiDetectionModule{}
+	dm.ndpi = ndpi
+
+	return dm, nil
+}
+
+func NdpiDetectionModuleExit(dm *NdpiDetectionModule) {
+	C.ndpi_detection_module_exit(dm.ndpi)
+}
+
 func (dm *NdpiDetectionModule) SetLogLevel(level uint16) {
 	C.ndpi_set_log_level(dm.ndpi, C.uint(level))
+}
+
+func (dm *NdpiDetectionModule) SetDebugBitmask(debugBitmask []uint32) {
+	ndpiBitmask := C.NDPI_PROTOCOL_BITMASK{}
+	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&debugBitmask[0]))
+
+	C.ndpi_set_debug_bitmask(dm.ndpi, ndpiBitmask)
 }
 
 func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
@@ -176,6 +203,24 @@ type NdpiFlow struct {
 	mu       sync.Mutex
 }
 
+func NewNdpiFlow() (*NdpiFlow, error) {
+	ndpiFlow := C.ndpi_flow_struct_malloc()
+	if ndpiFlow == nil {
+		C.ndpi_flow_struct_free(ndpiFlow)
+		err := errors.New("null ndpi flow struct")
+		return nil, err
+	}
+
+	f := &NdpiFlow{}
+	f.ndpiFlow = ndpiFlow
+
+	return f, nil
+}
+
+func FreeNdpiFlow(f *NdpiFlow) {
+	C.ndpi_flow_struct_free(f.ndpiFlow)
+}
+
 func (f *NdpiFlow) GetDetectedProtocolStack() [2]uint16 {
 	protoStack := [2]uint16{}
 	protoStack[0] = uint16(f.ndpiFlow.detected_protocol_stack[0])
@@ -218,44 +263,6 @@ type NdpiProto struct {
 	MasterProtocolId uint16
 	AppProtocolId    uint16
 	CategoryId       uint16
-}
-
-func NdpiDetectionModuleInitialize(detectionBitmask []uint32) (*NdpiDetectionModule, error) {
-	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
-	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&detectionBitmask[0]))
-	ndpi := C.ndpi_detection_module_initialize(ndpiBitmask)
-	if ndpi == nil {
-		C.ndpi_detection_module_exit(ndpi)
-		err := errors.New("null ndpi detection module struct")
-		return nil, err
-	}
-
-	dm := &NdpiDetectionModule{}
-	dm.ndpi = ndpi
-
-	return dm, nil
-}
-
-func NdpiDetectionModuleExit(dm *NdpiDetectionModule) {
-	C.ndpi_detection_module_exit(dm.ndpi)
-}
-
-func NewNdpiFlow() (*NdpiFlow, error) {
-	ndpiFlow := C.ndpi_flow_struct_malloc()
-	if ndpiFlow == nil {
-		C.ndpi_flow_struct_free(ndpiFlow)
-		err := errors.New("null ndpi flow struct")
-		return nil, err
-	}
-
-	f := &NdpiFlow{}
-	f.ndpiFlow = ndpiFlow
-
-	return f, nil
-}
-
-func FreeNdpiFlow(f *NdpiFlow) {
-	C.ndpi_flow_struct_free(f.ndpiFlow)
 }
 
 func NdpiPacketProcessing(dm *NdpiDetectionModule, flow *NdpiFlow, ipPacket []byte, ipPacketLen uint16, timestamp int) NdpiProto {
