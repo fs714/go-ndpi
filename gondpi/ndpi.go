@@ -92,6 +92,12 @@ func NdpiProtocolBitmaskSetAll(bitmask []uint32) []uint32 {
 	return bitmask
 }
 
+type NdpiProto struct {
+	MasterProtocolId uint16
+	AppProtocolId    uint16
+	CategoryId       uint16
+}
+
 type NdpiProtoDefaults struct {
 	ProtoName        string
 	ProtoCategory    uint16
@@ -248,6 +254,32 @@ func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 	return npds
 }
 
+func (dm *NdpiDetectionModule) PacketProcessing(flow *NdpiFlow, ipPacket []byte, ipPacketLen uint16, timestamp int) NdpiProto {
+	ipPktPtr := (*C.u_char)(unsafe.Pointer(&ipPacket[0]))
+	ipPktLen := C.ushort(ipPacketLen)
+	ipPktTs := C.uint64_t(timestamp)
+
+	proto := C.ndpi_packet_processing(dm.ndpi, flow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
+	// fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
+
+	ndpiProto := NdpiProto{
+		MasterProtocolId: uint16(proto.master_protocol),
+		AppProtocolId:    uint16(proto.app_protocol),
+		CategoryId:       NdpiCategoryToId(proto.category),
+	}
+
+	return ndpiProto
+}
+
+func (dm *NdpiDetectionModule) IsExtraDissectionPossible(flow *NdpiFlow) bool {
+	ret := C.ndpi_extra_dissection_possible(dm.ndpi, flow.ndpiFlow)
+	if uint32(ret) == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
 type NdpiFlow struct {
 	ndpiFlow ndpiFlowStructPtr
 	mu       sync.Mutex
@@ -307,29 +339,6 @@ func (f *NdpiFlow) GetHttp() types.NdpiHttp {
 
 func (f *NdpiFlow) GetProtocolCategory() uint16 {
 	return NdpiCategoryToId(f.ndpiFlow.category)
-}
-
-type NdpiProto struct {
-	MasterProtocolId uint16
-	AppProtocolId    uint16
-	CategoryId       uint16
-}
-
-func NdpiPacketProcessing(dm *NdpiDetectionModule, flow *NdpiFlow, ipPacket []byte, ipPacketLen uint16, timestamp int) NdpiProto {
-	ipPktPtr := (*C.u_char)(unsafe.Pointer(&ipPacket[0]))
-	ipPktLen := C.ushort(ipPacketLen)
-	ipPktTs := C.uint64_t(timestamp)
-
-	proto := C.ndpi_packet_processing(dm.ndpi, flow.ndpiFlow, ipPktPtr, ipPktLen, ipPktTs)
-	// fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
-
-	ndpiProto := NdpiProto{
-		MasterProtocolId: uint16(proto.master_protocol),
-		AppProtocolId:    uint16(proto.app_protocol),
-		CategoryId:       NdpiCategoryToId(proto.category),
-	}
-
-	return ndpiProto
 }
 
 func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {

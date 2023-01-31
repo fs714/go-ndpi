@@ -196,7 +196,7 @@ func main() {
 					// ipData := make([]byte, len(eth.Payload))
 					// copy(ipData, eth.Payload)
 
-					ndpiProto = gondpi.NdpiPacketProcessing(ndpiDM, flowInfo.NdpiFlow, ipData, ipLength, ts)
+					ndpiProto = ndpiDM.PacketProcessing(flowInfo.NdpiFlow, ipData, ipLength, ts)
 					if ndpiProto.MasterProtocolId != types.NDPI_PROTOCOL_UNKNOWN || ndpiProto.AppProtocolId != types.NDPI_PROTOCOL_UNKNOWN {
 						flowInfo.NdpiDetectionCompleted = true
 						gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
