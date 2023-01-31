@@ -154,6 +154,43 @@ func (dm *NdpiDetectionModule) LoadProtocolsFile(path string) error {
 	return nil
 }
 
+func (dm *NdpiDetectionModule) LoadCategoriesFile(path string, userData string) uint32 {
+	cPath := C.CString(path)
+	cUserData := C.CString(userData)
+	defer C.free(unsafe.Pointer(cPath))
+
+	num := C.ndpi_load_categories_file(dm.ndpi, cPath, unsafe.Pointer(cUserData))
+
+	return uint32(num)
+}
+
+func (dm *NdpiDetectionModule) LoadRiskDomainFile(path string) uint32 {
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+
+	num := C.ndpi_load_risk_domain_file(dm.ndpi, cPath)
+
+	return uint32(num)
+}
+
+func (dm *NdpiDetectionModule) LoadMaliciousJa3File(path string) uint32 {
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+
+	num := C.ndpi_load_malicious_ja3_file(dm.ndpi, cPath)
+
+	return uint32(num)
+}
+
+func (dm *NdpiDetectionModule) LoadMaliciousSha1File(path string) uint32 {
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+
+	num := C.ndpi_load_malicious_sha1_file(dm.ndpi, cPath)
+
+	return uint32(num)
+}
+
 func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 	isClearTextProtoList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
 	isAppProtocolList := make([]bool, C.NDPI_MAX_SUPPORTED_PROTOCOLS+C.NDPI_MAX_NUM_CUSTOM_PROTOCOLS)
