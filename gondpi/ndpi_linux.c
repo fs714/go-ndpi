@@ -42,6 +42,38 @@ extern void ndpi_flow_struct_free(struct ndpi_flow_struct *flow)
     ndpi_free_flow(flow);
 }
 
+extern uint8_t ndpi_flow_get_protocol_id_already_guessed(struct ndpi_flow_struct *flow) {
+    return flow->protocol_id_already_guessed;
+}
+
+extern uint8_t ndpi_flow_get_host_already_guessed(struct ndpi_flow_struct *flow) {
+    return flow->host_already_guessed;
+}
+
+extern uint8_t ndpi_flow_get_fail_with_unknown(struct ndpi_flow_struct *flow) {
+    return flow->fail_with_unknown;
+}
+
+extern uint8_t ndpi_flow_get_init_finished(struct ndpi_flow_struct *flow) {
+    return flow->init_finished;
+}
+
+extern uint8_t ndpi_flow_get_setup_packet_direction(struct ndpi_flow_struct *flow) {
+    return flow->setup_packet_direction;
+}
+
+extern uint8_t ndpi_flow_get_packet_direction(struct ndpi_flow_struct *flow) {
+    return flow->packet_direction;
+}
+
+extern uint8_t ndpi_flow_get_check_extra_packets(struct ndpi_flow_struct *flow) {
+    return flow->check_extra_packets;
+}
+
+extern uint8_t ndpi_flow_get_is_ipv6(struct ndpi_flow_struct *flow) {
+    return flow->is_ipv6;
+}
+
 extern struct ndpi_detection_module_struct *ndpi_detection_module_initialize(ndpi_init_prefs prefs, NDPI_PROTOCOL_BITMASK *detection_bitmask)
 {
     set_ndpi_malloc(malloc);

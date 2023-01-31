@@ -63,15 +63,3 @@ var NdpiHttpRequestVersionIdMap = map[uint8]HttpRequestVersion{
 	NDPI_HTTP_Request_Version_1_0: HTTP_Request_Version_1_0,
 	NDPI_HTTP_Request_Version_1_1: HTTP_Request_Version_1_1,
 }
-
-type NdpiHttp struct {
-	NdpiHttpMethod      uint16
-	RequestVersion      uint8
-	ResponseStatusCode  uint16
-	Url                 string
-	RequestContentType  string
-	ResponseContentType string
-	UserAgent           string
-	DetectedOs          string
-	XForwardedAddr      string
-}
