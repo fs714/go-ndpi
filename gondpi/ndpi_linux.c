@@ -25,6 +25,23 @@ extern void ndpi_protocol_bitmask_set_all(NDPI_PROTOCOL_BITMASK *bitmask)
     NDPI_BITMASK_SET_ALL(*bitmask);
 }
 
+extern struct ndpi_flow_struct *ndpi_flow_struct_malloc()
+{
+    struct ndpi_flow_struct *newflow = (struct ndpi_flow_struct *)ndpi_flow_malloc(SIZEOF_FLOW_STRUCT);
+
+    if (newflow != NULL)
+    {
+        memset(newflow, 0, SIZEOF_FLOW_STRUCT);
+    }
+
+    return newflow;
+}
+
+extern void ndpi_flow_struct_free(struct ndpi_flow_struct *flow)
+{
+    ndpi_free_flow(flow);
+}
+
 extern struct ndpi_detection_module_struct *ndpi_detection_module_initialize(ndpi_init_prefs prefs, NDPI_PROTOCOL_BITMASK *detection_bitmask)
 {
     set_ndpi_malloc(malloc);
@@ -66,23 +83,6 @@ extern ndpi_proto_defaults_t *ndpi_proto_defaults_get(struct ndpi_detection_modu
     }
 
     return pd;
-}
-
-extern struct ndpi_flow_struct *ndpi_flow_struct_malloc()
-{
-    struct ndpi_flow_struct *newflow = (struct ndpi_flow_struct *)ndpi_flow_malloc(SIZEOF_FLOW_STRUCT);
-
-    if (newflow != NULL)
-    {
-        memset(newflow, 0, SIZEOF_FLOW_STRUCT);
-    }
-
-    return newflow;
-}
-
-extern void ndpi_flow_struct_free(struct ndpi_flow_struct *flow)
-{
-    ndpi_free_flow(flow);
 }
 
 extern struct ndpi_proto ndpi_packet_processing(struct ndpi_detection_module_struct *ndpi_struct,

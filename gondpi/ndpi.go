@@ -23,6 +23,10 @@ const (
 type ndpiDetectionModuleStructPtr *C.struct_ndpi_detection_module_struct
 type ndpiFlowStructPtr *C.struct_ndpi_flow_struct
 
+func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {
+	return uint16(category)
+}
+
 func NewNdpiProtocolBitmask() []uint32 {
 	return make([]uint32, NdpiBitmaskSize)
 }
@@ -90,6 +94,67 @@ func NdpiProtocolBitmaskSetAll(bitmask []uint32) []uint32 {
 	sliceHeader.Data = uintptr(unsafe.Pointer(&ndpiBitmask.fds_bits[0]))
 
 	return bitmask
+}
+
+type NdpiFlow struct {
+	ndpiFlow ndpiFlowStructPtr
+	mu       sync.Mutex
+}
+
+func NewNdpiFlow() (*NdpiFlow, error) {
+	ndpiFlow := C.ndpi_flow_struct_malloc()
+	if ndpiFlow == nil {
+		C.ndpi_flow_struct_free(ndpiFlow)
+		err := errors.New("null ndpi flow struct")
+		return nil, err
+	}
+
+	f := &NdpiFlow{}
+	f.ndpiFlow = ndpiFlow
+
+	return f, nil
+}
+
+func FreeNdpiFlow(f *NdpiFlow) {
+	C.ndpi_flow_struct_free(f.ndpiFlow)
+}
+
+func (f *NdpiFlow) GetDetectedProtocolStack() [2]uint16 {
+	protoStack := [2]uint16{}
+	protoStack[0] = uint16(f.ndpiFlow.detected_protocol_stack[0])
+	protoStack[1] = uint16(f.ndpiFlow.detected_protocol_stack[1])
+
+	return protoStack
+}
+
+func (f *NdpiFlow) GetProcessedPktNum() uint16 {
+	return uint16(f.ndpiFlow.num_processed_pkts)
+}
+
+func (f *NdpiFlow) GetFlowExtraInfo() string {
+	return C.GoString(&f.ndpiFlow.flow_extra_info[0])
+}
+
+func (f *NdpiFlow) GetHostServerName() string {
+	return C.GoString(&f.ndpiFlow.host_server_name[0])
+}
+
+func (f *NdpiFlow) GetHttp() types.NdpiHttp {
+	return types.NdpiHttp{
+		NdpiHttpMethod:      uint16(f.ndpiFlow.http.method),
+		RequestVersion:      uint8(f.ndpiFlow.http.request_version),
+		ResponseStatusCode:  uint16(f.ndpiFlow.http.response_status_code),
+		Url:                 C.GoString(f.ndpiFlow.http.url),
+		RequestContentType:  C.GoString(f.ndpiFlow.http.request_content_type),
+		ResponseContentType: C.GoString(f.ndpiFlow.http.content_type),
+		UserAgent:           C.GoString(f.ndpiFlow.http.user_agent),
+		DetectedOs:          C.GoString(f.ndpiFlow.http.detected_os),
+		XForwardedAddr:      C.GoString(f.ndpiFlow.http.nat_ip),
+	}
+}
+
+func (f *NdpiFlow) GetProtocolCategory() uint16 {
+	return NdpiCategoryToId(f.ndpiFlow.category)
 }
 
 type NdpiProto struct {
@@ -280,67 +345,27 @@ func (dm *NdpiDetectionModule) IsExtraDissectionPossible(flow *NdpiFlow) bool {
 	}
 }
 
-type NdpiFlow struct {
-	ndpiFlow ndpiFlowStructPtr
-	mu       sync.Mutex
-}
-
-func NewNdpiFlow() (*NdpiFlow, error) {
-	ndpiFlow := C.ndpi_flow_struct_malloc()
-	if ndpiFlow == nil {
-		C.ndpi_flow_struct_free(ndpiFlow)
-		err := errors.New("null ndpi flow struct")
-		return nil, err
+func (dm *NdpiDetectionModule) DetectionGiveup(flow *NdpiFlow, enableGuess bool) (NdpiProto, bool) {
+	var cEnableGuess C.uint8_t = 0
+	if enableGuess {
+		cEnableGuess = 1
 	}
 
-	f := &NdpiFlow{}
-	f.ndpiFlow = ndpiFlow
+	var cIsProtoGuessed *C.uint8_t
+	*cIsProtoGuessed = 0
 
-	return f, nil
-}
+	proto := C.ndpi_detection_giveup(dm.ndpi, flow.ndpiFlow, cEnableGuess, cIsProtoGuessed)
 
-func FreeNdpiFlow(f *NdpiFlow) {
-	C.ndpi_flow_struct_free(f.ndpiFlow)
-}
-
-func (f *NdpiFlow) GetDetectedProtocolStack() [2]uint16 {
-	protoStack := [2]uint16{}
-	protoStack[0] = uint16(f.ndpiFlow.detected_protocol_stack[0])
-	protoStack[1] = uint16(f.ndpiFlow.detected_protocol_stack[1])
-
-	return protoStack
-}
-
-func (f *NdpiFlow) GetProcessedPktNum() uint16 {
-	return uint16(f.ndpiFlow.num_processed_pkts)
-}
-
-func (f *NdpiFlow) GetFlowExtraInfo() string {
-	return C.GoString(&f.ndpiFlow.flow_extra_info[0])
-}
-
-func (f *NdpiFlow) GetHostServerName() string {
-	return C.GoString(&f.ndpiFlow.host_server_name[0])
-}
-
-func (f *NdpiFlow) GetHttp() types.NdpiHttp {
-	return types.NdpiHttp{
-		NdpiHttpMethod:      uint16(f.ndpiFlow.http.method),
-		RequestVersion:      uint8(f.ndpiFlow.http.request_version),
-		ResponseStatusCode:  uint16(f.ndpiFlow.http.response_status_code),
-		Url:                 C.GoString(f.ndpiFlow.http.url),
-		RequestContentType:  C.GoString(f.ndpiFlow.http.request_content_type),
-		ResponseContentType: C.GoString(f.ndpiFlow.http.content_type),
-		UserAgent:           C.GoString(f.ndpiFlow.http.user_agent),
-		DetectedOs:          C.GoString(f.ndpiFlow.http.detected_os),
-		XForwardedAddr:      C.GoString(f.ndpiFlow.http.nat_ip),
+	ndpiProto := NdpiProto{
+		MasterProtocolId: uint16(proto.master_protocol),
+		AppProtocolId:    uint16(proto.app_protocol),
+		CategoryId:       NdpiCategoryToId(proto.category),
 	}
-}
 
-func (f *NdpiFlow) GetProtocolCategory() uint16 {
-	return NdpiCategoryToId(f.ndpiFlow.category)
-}
+	isProtoGuessed := false
+	if enableGuess && uint8(*cIsProtoGuessed) == 1 {
+		isProtoGuessed = true
+	}
 
-func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {
-	return uint16(category)
+	return ndpiProto, isProtoGuessed
 }
