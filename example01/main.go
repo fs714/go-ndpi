@@ -138,7 +138,7 @@ func main() {
 	var fp FlowFingerprint
 	var flowInfo *FlowInfo
 	var ndpiProto gondpi.NdpiProto
-	var ts int
+	var ts int64
 	var ipData []byte
 	var ipLength uint16
 	for {
@@ -190,7 +190,7 @@ func main() {
 					flowInfo.NdpiProcessedPackets++
 					flowInfo.NdpiProcessedBytes += int64(ipLength)
 
-					ts = ci.Timestamp.Second()*1000 + ci.Timestamp.Nanosecond()/1000000
+					ts = ci.Timestamp.UnixMilli()
 					ipData = eth.Payload
 
 					// ipData := make([]byte, len(eth.Payload))
@@ -199,35 +199,24 @@ func main() {
 					ndpiProto = ndpiDM.PacketProcessing(flowInfo.NdpiFlow, ipData, ipLength, ts)
 					if ndpiProto.MasterProtocolId != types.NDPI_PROTOCOL_UNKNOWN || ndpiProto.AppProtocolId != types.NDPI_PROTOCOL_UNKNOWN {
 						flowInfo.NdpiDetectionCompleted = true
-						gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
-
-						masterProto := types.NdpiProtocolIdMap[ndpiProto.MasterProtocolId]
-						appProto := types.NdpiProtocolIdMap[ndpiProto.AppProtocolId]
-						category := types.NdpiCategoryIdMap[ndpiProto.CategoryId]
-
-						detectedProtocolStack := flowInfo.NdpiFlow.GetDetectedProtocolStack()
-						processedPktNum := flowInfo.NdpiFlow.GetProcessedPktNum()
-						flowExtraInfo := flowInfo.NdpiFlow.GetFlowExtraInfo()
-						hostServerName := flowInfo.NdpiFlow.GetHostServerName()
-						http := flowInfo.NdpiFlow.GetHttp()
-						protocolCategory := flowInfo.NdpiFlow.GetProtocolCategory()
 
 						fmt.Println("------")
-						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
+						masterProto := ndpiProto.MasterProtocolId.ToName()
+						appProto := ndpiProto.AppProtocolId.ToName()
+						category := ndpiProto.CategoryId.ToName()
 
-						fmt.Printf("Detected Protocol Stack: %s, %s\n", types.NdpiProtocolIdMap[detectedProtocolStack[0]], types.NdpiProtocolIdMap[detectedProtocolStack[1]])
-						fmt.Printf("Processed Pkt Num: %d\n", processedPktNum)
-						fmt.Printf("Flow Extra Info: %s\n", flowExtraInfo)
-						fmt.Printf("Host Server Name: %s\n", hostServerName)
-						httpJson, _ := json.MarshalIndent(http, "", "  ")
-						fmt.Printf("http struct:\n%s\n", string(httpJson))
-						fmt.Printf("Http Method: %s, Http Request Version: %s\n", types.NdpiHttpMethodIdMap[http.NdpiHttpMethod], types.NdpiHttpRequestVersionIdMap[http.RequestVersion])
-						fmt.Printf("Protocol Category: %s\n", types.NdpiCategoryIdMap[protocolCategory])
+						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
 
 						fpJson, _ := json.MarshalIndent(fp, "", "  ")
 						flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
 						fmt.Println(string(fpJson))
 						fmt.Println(string(flowInfoJson))
+
+						ndpiFlowInfo := flowInfo.NdpiFlow.ToNdpiFlowInfo()
+						ndpiFlowInfoString, _ := ndpiFlowInfo.ToString()
+						fmt.Println(ndpiFlowInfoString)
+
+						gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
 					}
 				}
 

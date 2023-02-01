@@ -1,8 +1,15 @@
 package types
 
+import (
+	"encoding/binary"
+	"encoding/json"
+	"net"
+	"time"
+)
+
 type NdpiFlowHttp struct {
-	NdpiHttpMethod      uint16
-	RequestVersion      uint8
+	NdpiHttpMethod      HttpMethod
+	RequestVersion      HttpRequestVersion
 	ResponseStatusCode  uint16
 	Url                 string
 	RequestContentType  string
@@ -112,4 +119,83 @@ type NdpiFlowSnmp struct {
 	Version     uint8
 	Primitive   uint8
 	ErrorStatus uint8
+}
+
+type NdpiFlowInfo struct {
+	DetectedProtocolStack   [2]NdpiProtocol
+	GuessedProtocolId       NdpiProtocol
+	GuessedHostProtocolId   NdpiProtocol
+	GuessedCategoryId       NdpiCategory
+	GuessedHeaderCategoryId NdpiCategory
+	L4Protocol              IPProto
+	IsProtoIdAlreadyGuessed bool
+	IsHostAlreadyGuessed    bool
+	IsFailWithUnknow        bool
+	IsInitFinished          bool
+	IsSetupPacketDirection  bool
+	IsPacketDirection       bool
+	IsCheckExtraPackets     bool
+	IsIpv6                  bool
+	Confidence              NdpiConfidence
+	NextTcpSeqNR            [2]uint16
+	SrcAddr                 uint32
+	DstAddr                 uint32
+	SrcPort                 uint16
+	DstPort                 uint16
+	MaxExtraPacketsToCheck  uint8
+	NumExtraPacketsChecked  uint8
+	ProcessedPktNum         uint16
+	LastPacketTimeMS        uint64
+	Entropy                 float32
+	FlowExtraInfo           string
+	HostServerName          string
+	Http                    NdpiFlowHttp
+	KerberosBuf             NdpiFlowKerberosBuf
+	Stun                    NdpiFlowStun
+	ProtocolCategory        NdpiCategory
+}
+
+func (f *NdpiFlowInfo) ToString() (string, error) {
+	flowInfoExtend := struct {
+		NdpiFlowInfo
+		DetectedProtocolStackString [2]string
+		GuessedProtocolString       string
+		GuessedHostProtocolString   string
+		GuessedCategoryString       string
+		GuessedHeaderCategoryString string
+		L4ProtocolString            string
+		SrcAddrString               string
+		DstAddrString               string
+		LastPacketTimeMSString      string
+		ProtocolCategoryString      string
+	}{
+		NdpiFlowInfo:                *f,
+		DetectedProtocolStackString: [2]string{f.DetectedProtocolStack[0].ToName(), f.DetectedProtocolStack[1].ToName()},
+		GuessedProtocolString:       f.GuessedProtocolId.ToName(),
+		GuessedHostProtocolString:   f.GuessedHostProtocolId.ToName(),
+		GuessedCategoryString:       f.GuessedCategoryId.ToName(),
+		GuessedHeaderCategoryString: f.GuessedHeaderCategoryId.ToName(),
+		L4ProtocolString:            f.L4Protocol.ToName(),
+		SrcAddrString:               IntToIPv4(f.SrcAddr).String(),
+		DstAddrString:               IntToIPv4(f.DstAddr).String(),
+		LastPacketTimeMSString:      time.Unix(0, int64(f.LastPacketTimeMS)*1000000).Format(time.RFC3339Nano),
+		ProtocolCategoryString:      f.ProtocolCategory.ToName(),
+	}
+
+	flowInfoExtendJson, err := json.MarshalIndent(flowInfoExtend, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(flowInfoExtendJson), nil
+}
+
+func IPv4ToInt(ip net.IP) uint32 {
+	return binary.BigEndian.Uint32(ip.To4())
+}
+
+func IntToIPv4(n uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, n)
+	return ip
 }

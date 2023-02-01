@@ -63,21 +63,38 @@ func generateGolangCode(protocolVarList []string, protocolIdList []int, protocol
 	var builder strings.Builder
 
 	builder.WriteString("package " + PackageName + "\n\n")
-	builder.WriteString("type Protocol string\n\n")
+	builder.WriteString("type NdpiProtocol uint16\n\n")
 
-	builder.WriteString("const (\n")
-	for _, v := range protocolNameList {
-		builder.WriteString("    PROTO_" + v + ` Protocol = "` + v + `"` + "\n")
-	}
-	builder.WriteString(")\n\n")
+	// func (p *NdpiProtocol) ToName() string {
+	// 	name, ok := NdpiProtocolNameMap[*p]
+	// 	if !ok {
+	// 		name = ""
+	// 	}
+
+	// 	return name
+	// }
+
+	builder.WriteString("func (p *NdpiProtocol) ToName() string {\n")
+	builder.WriteString("    name, ok := NdpiProtocolNameMap[*p]\n")
+	builder.WriteString("    if !ok {\n")
+	builder.WriteString(`        name = ""` + "\n")
+	builder.WriteString("    }\n\n")
+	builder.WriteString("    return name\n")
+	builder.WriteString("}\n\n")
 
 	builder.WriteString("const (\n")
 	for idx, v := range protocolVarList {
-		builder.WriteString("    " + v + " = " + strconv.Itoa(protocolIdList[idx]) + "\n")
+		builder.WriteString("    " + v + " NdpiProtocol = " + strconv.Itoa(protocolIdList[idx]) + "\n")
 	}
 	builder.WriteString(")\n\n")
 
-	builder.WriteString("var NdpiProtocolIdMap = map[uint16]Protocol{\n")
+	builder.WriteString("const (\n")
+	for _, v := range protocolNameList {
+		builder.WriteString("    PROTO_" + v + ` string = "` + v + `"` + "\n")
+	}
+	builder.WriteString(")\n\n")
+
+	builder.WriteString("var NdpiProtocolNameMap = map[NdpiProtocol]string{\n")
 	for idx, v := range protocolVarList {
 		builder.WriteString("    " + v + ": PROTO_" + protocolNameList[idx] + ",\n")
 	}

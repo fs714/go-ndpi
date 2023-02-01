@@ -8,6 +8,7 @@ package gondpi
 import "C"
 
 import (
+	"encoding/binary"
 	"reflect"
 	"sync"
 	"unsafe"
@@ -23,15 +24,15 @@ const (
 type NdpiDetectionModuleStructPtr *C.struct_ndpi_detection_module_struct
 type NdpiFlowStructPtr *C.struct_ndpi_flow_struct
 
-func NdpiCategoryToId(category C.ndpi_protocol_category_t) uint16 {
-	return uint16(category)
+func NdpiCategoryToId(category C.ndpi_protocol_category_t) types.NdpiCategory {
+	return types.NdpiCategory(category)
 }
 
 func NewNdpiProtocolBitmask() []uint32 {
 	return make([]uint32, NdpiBitmaskSize)
 }
 
-func NdpiProtocolBitmaskAdd(bitmask []uint32, proto uint16) []uint32 {
+func NdpiProtocolBitmaskAdd(bitmask []uint32, proto types.NdpiProtocol) []uint32 {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
 	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
@@ -45,7 +46,7 @@ func NdpiProtocolBitmaskAdd(bitmask []uint32, proto uint16) []uint32 {
 	return bitmask
 }
 
-func NdpiProtocolBitmaskDel(bitmask []uint32, proto uint16) []uint32 {
+func NdpiProtocolBitmaskDel(bitmask []uint32, proto types.NdpiProtocol) []uint32 {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
 	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
@@ -59,7 +60,7 @@ func NdpiProtocolBitmaskDel(bitmask []uint32, proto uint16) []uint32 {
 	return bitmask
 }
 
-func NdpiProtocolBitmaskIsSet(bitmask []uint32, proto uint16) bool {
+func NdpiProtocolBitmaskIsSet(bitmask []uint32, proto types.NdpiProtocol) bool {
 	ndpiBitmask := &C.NDPI_PROTOCOL_BITMASK{}
 	ndpiBitmask.fds_bits = *(*[NdpiBitmaskSize]C.uint32_t)(unsafe.Pointer(&bitmask[0]))
 
@@ -119,32 +120,32 @@ func FreeNdpiFlow(f *NdpiFlow) {
 	C.ndpi_flow_struct_free(f.NdpiFlowPtr)
 }
 
-func (f *NdpiFlow) GetDetectedProtocolStack() [2]uint16 {
-	protoStack := [2]uint16{}
-	protoStack[0] = uint16(f.NdpiFlowPtr.detected_protocol_stack[0])
-	protoStack[1] = uint16(f.NdpiFlowPtr.detected_protocol_stack[1])
+func (f *NdpiFlow) GetDetectedProtocolStack() [2]types.NdpiProtocol {
+	protoStack := [2]types.NdpiProtocol{}
+	protoStack[0] = types.NdpiProtocol(f.NdpiFlowPtr.detected_protocol_stack[0])
+	protoStack[1] = types.NdpiProtocol(f.NdpiFlowPtr.detected_protocol_stack[1])
 
 	return protoStack
 }
 
-func (f *NdpiFlow) GetGuessedProtocolId() uint16 {
-	return uint16(f.NdpiFlowPtr.guessed_protocol_id)
+func (f *NdpiFlow) GetGuessedProtocolId() types.NdpiProtocol {
+	return types.NdpiProtocol(f.NdpiFlowPtr.guessed_protocol_id)
 }
 
-func (f *NdpiFlow) GetGuessedHostProtocolId() uint16 {
-	return uint16(f.NdpiFlowPtr.guessed_host_protocol_id)
+func (f *NdpiFlow) GetGuessedHostProtocolId() types.NdpiProtocol {
+	return types.NdpiProtocol(f.NdpiFlowPtr.guessed_host_protocol_id)
 }
 
-func (f *NdpiFlow) GetGuessedCategoryId() uint16 {
-	return uint16(f.NdpiFlowPtr.guessed_category)
+func (f *NdpiFlow) GetGuessedCategoryId() types.NdpiCategory {
+	return types.NdpiCategory(f.NdpiFlowPtr.guessed_category)
 }
 
-func (f *NdpiFlow) GetGuessedHeaderCategoryId() uint16 {
-	return uint16(f.NdpiFlowPtr.guessed_header_category)
+func (f *NdpiFlow) GetGuessedHeaderCategoryId() types.NdpiCategory {
+	return types.NdpiCategory(f.NdpiFlowPtr.guessed_header_category)
 }
 
-func (f *NdpiFlow) GetL4Protocol() uint8 {
-	return uint8(f.NdpiFlowPtr.l4_proto)
+func (f *NdpiFlow) GetL4Protocol() types.IPProto {
+	return types.IPProto(f.NdpiFlowPtr.l4_proto)
 }
 
 func (f *NdpiFlow) IsProtoIdAlreadyGuessed() bool {
@@ -195,8 +196,8 @@ func (f *NdpiFlow) IsIpv6() bool {
 	return (uint8(ret) != 0)
 }
 
-func (f *NdpiFlow) GetConfidence() uint16 {
-	return uint16(f.NdpiFlowPtr.confidence)
+func (f *NdpiFlow) GetConfidence() types.NdpiConfidence {
+	return types.NdpiConfidence(f.NdpiFlowPtr.confidence)
 }
 
 func (f *NdpiFlow) GetNextTcpSeqNR() [2]uint16 {
@@ -208,19 +209,35 @@ func (f *NdpiFlow) GetNextTcpSeqNR() [2]uint16 {
 }
 
 func (f *NdpiFlow) GetSrcAddr() uint32 {
-	return uint32(f.NdpiFlowPtr.saddr)
+	srcAddrBigEndian := make([]byte, 4)
+	binary.BigEndian.PutUint32(srcAddrBigEndian, uint32(f.NdpiFlowPtr.saddr))
+	srcAddr := binary.LittleEndian.Uint32(srcAddrBigEndian)
+
+	return srcAddr
 }
 
 func (f *NdpiFlow) GetDstAddr() uint32 {
-	return uint32(f.NdpiFlowPtr.daddr)
+	dstAddrBigEndian := make([]byte, 4)
+	binary.BigEndian.PutUint32(dstAddrBigEndian, uint32(f.NdpiFlowPtr.daddr))
+	dstAddr := binary.LittleEndian.Uint32(dstAddrBigEndian)
+
+	return dstAddr
 }
 
 func (f *NdpiFlow) GetSrcPort() uint16 {
-	return uint16(f.NdpiFlowPtr.sport)
+	srcPortBigEndian := make([]byte, 2)
+	binary.BigEndian.PutUint16(srcPortBigEndian, uint16(f.NdpiFlowPtr.sport))
+	srcPort := binary.LittleEndian.Uint16(srcPortBigEndian)
+
+	return srcPort
 }
 
 func (f *NdpiFlow) GetDstPort() uint16 {
-	return uint16(f.NdpiFlowPtr.dport)
+	dstPortBigEndian := make([]byte, 2)
+	binary.BigEndian.PutUint16(dstPortBigEndian, uint16(f.NdpiFlowPtr.dport))
+	dstPort := binary.LittleEndian.Uint16(dstPortBigEndian)
+
+	return dstPort
 }
 
 func (f *NdpiFlow) GetMaxExtraPacketsToCheck() uint8 {
@@ -261,8 +278,8 @@ func (f *NdpiFlow) GetHostServerName() string {
 
 func (f *NdpiFlow) GetHttp() types.NdpiFlowHttp {
 	return types.NdpiFlowHttp{
-		NdpiHttpMethod:      uint16(f.NdpiFlowPtr.http.method),
-		RequestVersion:      uint8(f.NdpiFlowPtr.http.request_version),
+		NdpiHttpMethod:      types.HttpMethod(f.NdpiFlowPtr.http.method),
+		RequestVersion:      types.HttpRequestVersion(f.NdpiFlowPtr.http.request_version),
 		ResponseStatusCode:  uint16(f.NdpiFlowPtr.http.response_status_code),
 		Url:                 C.GoString(f.NdpiFlowPtr.http.url),
 		RequestContentType:  C.GoString(f.NdpiFlowPtr.http.request_content_type),
@@ -294,27 +311,63 @@ func (f *NdpiFlow) GetStun() types.NdpiFlowStun {
 // ......
 // }
 
-func (f *NdpiFlow) GetProtocolCategory() uint16 {
+func (f *NdpiFlow) GetProtocolCategory() types.NdpiCategory {
 	return NdpiCategoryToId(f.NdpiFlowPtr.category)
 }
 
+func (f *NdpiFlow) ToNdpiFlowInfo() types.NdpiFlowInfo {
+	return types.NdpiFlowInfo{
+		DetectedProtocolStack:   f.GetDetectedProtocolStack(),
+		GuessedProtocolId:       f.GetGuessedProtocolId(),
+		GuessedHostProtocolId:   f.GetGuessedHostProtocolId(),
+		GuessedCategoryId:       f.GetGuessedCategoryId(),
+		GuessedHeaderCategoryId: f.GetGuessedHeaderCategoryId(),
+		L4Protocol:              f.GetL4Protocol(),
+		IsProtoIdAlreadyGuessed: f.IsProtoIdAlreadyGuessed(),
+		IsHostAlreadyGuessed:    f.IsHostAlreadyGuessed(),
+		IsFailWithUnknow:        f.IsFailWithUnknow(),
+		IsInitFinished:          f.IsInitFinished(),
+		IsSetupPacketDirection:  f.IsSetupPacketDirection(),
+		IsPacketDirection:       f.IsPacketDirection(),
+		IsCheckExtraPackets:     f.IsCheckExtraPackets(),
+		IsIpv6:                  f.IsIpv6(),
+		Confidence:              f.GetConfidence(),
+		NextTcpSeqNR:            f.GetNextTcpSeqNR(),
+		SrcAddr:                 f.GetSrcAddr(),
+		DstAddr:                 f.GetDstAddr(),
+		SrcPort:                 f.GetSrcPort(),
+		DstPort:                 f.GetDstPort(),
+		MaxExtraPacketsToCheck:  f.GetMaxExtraPacketsToCheck(),
+		NumExtraPacketsChecked:  f.GetNumExtraPacketsChecked(),
+		ProcessedPktNum:         f.GetProcessedPktNum(),
+		LastPacketTimeMS:        f.GetLastPacketTimeMS(),
+		Entropy:                 f.GetEntropy(),
+		FlowExtraInfo:           f.GetFlowExtraInfo(),
+		HostServerName:          f.GetHostServerName(),
+		Http:                    f.GetHttp(),
+		KerberosBuf:             f.GetKerberosBuf(),
+		Stun:                    f.GetStun(),
+		ProtocolCategory:        f.GetProtocolCategory(),
+	}
+}
+
 type NdpiProto struct {
-	MasterProtocolId uint16
-	AppProtocolId    uint16
-	CategoryId       uint16
+	MasterProtocolId types.NdpiProtocol
+	AppProtocolId    types.NdpiProtocol
+	CategoryId       types.NdpiCategory
 }
 
 type NdpiProtoDefaults struct {
 	ProtoName        string
-	ProtoCategory    uint16
+	ProtoCategory    types.NdpiCategory
 	IsClearTextProto bool
 	IsAppProtocol    bool
-	SubProtocols     []uint16
-	ProtoId          uint16
+	SubProtocols     []types.NdpiProtocol
+	ProtoId          types.NdpiProtocol
 	ProtoIdx         uint16
 	TcpDefaultPorts  []uint16
 	UdpDefaultPorts  []uint16
-	ProtoBreed       uint16
+	ProtoBreed       types.NdpiProtocolBreed
 }
 
 type NdpiDetectionModule struct {
@@ -421,7 +474,7 @@ func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 			continue
 		}
 
-		subProtocols := make([]uint16, 0)
+		subProtocols := make([]types.NdpiProtocol, 0)
 		if pds[i].subprotocol_count > 0 {
 			sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&subProtocols)))
 			sliceHeader.Cap = int(pds[i].subprotocol_count)
@@ -443,15 +496,15 @@ func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 
 		npd := NdpiProtoDefaults{
 			ProtoName:        C.GoString(pds[i].protoName),
-			ProtoCategory:    uint16(pds[i].protoCategory),
+			ProtoCategory:    types.NdpiCategory(pds[i].protoCategory),
 			IsClearTextProto: isClearTextProtoList[i],
 			IsAppProtocol:    isAppProtocolList[i],
 			SubProtocols:     subProtocols,
-			ProtoId:          uint16(pds[i].protoId),
+			ProtoId:          types.NdpiProtocol(pds[i].protoId),
 			ProtoIdx:         uint16(pds[i].protoIdx),
 			TcpDefaultPorts:  tcpDefaultPorts,
 			UdpDefaultPorts:  udpDefaultPorts,
-			ProtoBreed:       uint16(pds[i].protoBreed),
+			ProtoBreed:       types.NdpiProtocolBreed(pds[i].protoBreed),
 		}
 
 		npds = append(npds, npd)
@@ -460,7 +513,7 @@ func (dm *NdpiDetectionModule) GetProtoDefaults() []NdpiProtoDefaults {
 	return npds
 }
 
-func (dm *NdpiDetectionModule) PacketProcessing(flow *NdpiFlow, ipPacket []byte, ipPacketLen uint16, timestamp int) NdpiProto {
+func (dm *NdpiDetectionModule) PacketProcessing(flow *NdpiFlow, ipPacket []byte, ipPacketLen uint16, timestamp int64) NdpiProto {
 	ipPktPtr := (*C.u_char)(unsafe.Pointer(&ipPacket[0]))
 	ipPktLen := C.ushort(ipPacketLen)
 	ipPktTs := C.uint64_t(timestamp)
@@ -469,8 +522,8 @@ func (dm *NdpiDetectionModule) PacketProcessing(flow *NdpiFlow, ipPacket []byte,
 	// fmt.Printf("%v, %v, %v\n", proto.master_protocol, proto.app_protocol, proto.category)
 
 	ndpiProto := NdpiProto{
-		MasterProtocolId: uint16(proto.master_protocol),
-		AppProtocolId:    uint16(proto.app_protocol),
+		MasterProtocolId: types.NdpiProtocol(proto.master_protocol),
+		AppProtocolId:    types.NdpiProtocol(proto.app_protocol),
 		CategoryId:       NdpiCategoryToId(proto.category),
 	}
 
@@ -498,8 +551,8 @@ func (dm *NdpiDetectionModule) DetectionGiveup(flow *NdpiFlow, enableGuess bool)
 	proto := C.ndpi_detection_giveup(dm.NdpiPtr, flow.NdpiFlowPtr, cEnableGuess, cIsProtoGuessed)
 
 	ndpiProto := NdpiProto{
-		MasterProtocolId: uint16(proto.master_protocol),
-		AppProtocolId:    uint16(proto.app_protocol),
+		MasterProtocolId: types.NdpiProtocol(proto.master_protocol),
+		AppProtocolId:    types.NdpiProtocol(proto.app_protocol),
 		CategoryId:       NdpiCategoryToId(proto.category),
 	}
 
