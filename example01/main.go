@@ -13,7 +13,6 @@ import (
 	"flag"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/fs714/go-ndpi/gondpi"
 	"github.com/fs714/go-ndpi/gondpi/types"
@@ -22,22 +21,48 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
+const (
+	MaxPacketsUdpDissection = 24
+	MaxPacketsTcpDissection = 80
+)
+
 type FlowFingerprint struct {
-	SrcAddr  string
-	DstAddr  string
-	SrcPort  string
-	DstPort  string
-	Protocol string
+	SrcAddr  uint32
+	DstAddr  uint32
+	SrcPort  uint16
+	DstPort  uint16
+	Protocol uint8
+}
+
+func (f *FlowFingerprint) ToString() string {
+	ff := struct {
+		SrcAddr  string
+		DstAddr  string
+		SrcPort  uint16
+		DstPort  uint16
+		Protocol string
+	}{
+		SrcAddr:  types.IntToIPv4(f.SrcAddr).String(),
+		DstAddr:  types.IntToIPv4(f.DstAddr).String(),
+		SrcPort:  f.SrcPort,
+		DstPort:  f.DstPort,
+		Protocol: (*types.IPProto)(&f.Protocol).ToName(),
+	}
+
+	ffJson, _ := json.MarshalIndent(ff, "", "  ")
+
+	return string(ffJson)
 }
 
 type FlowInfo struct {
 	TotalL2Packets         int64
 	TotalL3PayloadBytes    int64
-	StartTs                time.Time
-	EndTs                  time.Time
+	StartTsMilli           int64
+	EndTsMilli             int64
 	NdpiProcessedPackets   int64
 	NdpiProcessedBytes     int64
 	NdpiDetectionCompleted bool
+	NdpiIsGuessed          bool
 	NdpiFlow               *gondpi.NdpiFlow
 	Mu                     sync.Mutex
 }
@@ -55,23 +80,35 @@ func NewFlowInfo() (*FlowInfo, error) {
 	return &flowInfo, nil
 }
 
-type FlowStats struct {
+type IfaceStats struct {
 	FlowMap map[FlowFingerprint]*FlowInfo
 	Mu      sync.Mutex
 }
 
-func (fs *FlowStats) AddFlow(fp FlowFingerprint, flowInfo *FlowInfo) {
-	fs.Mu.Lock()
-	defer fs.Mu.Unlock()
+func (s *IfaceStats) AddFlow(fp FlowFingerprint, flowInfo *FlowInfo) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
 
-	fs.FlowMap[fp] = flowInfo
+	s.FlowMap[fp] = flowInfo
 }
 
-func (fs *FlowStats) GetFlow(fp FlowFingerprint) *FlowInfo {
-	fs.Mu.Lock()
-	defer fs.Mu.Unlock()
+func (s *IfaceStats) DeleteFlow(fp FlowFingerprint) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
 
-	flowInfo, ok := fs.FlowMap[fp]
+	_, ok := s.FlowMap[fp]
+	if !ok {
+		return
+	}
+
+	delete(s.FlowMap, fp)
+}
+
+func (s *IfaceStats) GetFlow(fp FlowFingerprint) *FlowInfo {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	flowInfo, ok := s.FlowMap[fp]
 	if ok {
 		return flowInfo
 	}
@@ -84,7 +121,7 @@ func (fs *FlowStats) GetFlow(fp FlowFingerprint) *FlowInfo {
 		Protocol: fp.Protocol,
 	}
 
-	flowInfo, ok = fs.FlowMap[fpr]
+	flowInfo, ok = s.FlowMap[fpr]
 	if ok {
 		return flowInfo
 	}
@@ -94,10 +131,12 @@ func (fs *FlowStats) GetFlow(fp FlowFingerprint) *FlowInfo {
 
 func main() {
 	var ifaceName string
+	var enableGuess bool
 	flag.StringVar(&ifaceName, "i", "", "interface name")
+	flag.BoolVar(&enableGuess, "g", true, "enable protocol guess or not")
 	flag.Parse()
 
-	Stats := FlowStats{
+	Stats := IfaceStats{
 		FlowMap: map[FlowFingerprint]*FlowInfo{},
 	}
 
@@ -141,6 +180,7 @@ func main() {
 	var ts int64
 	var ipData []byte
 	var ipLength uint16
+	var isGuessed bool
 	for {
 		data, ci, err = handle.ZeroCopyReadPacketData()
 		if err != nil {
@@ -159,11 +199,11 @@ func main() {
 			case layers.LayerTypeTCP:
 				ipLength = ip4.Length
 				fp = FlowFingerprint{
-					SrcAddr:  ip4.SrcIP.String(),
-					DstAddr:  ip4.DstIP.String(),
-					SrcPort:  tcp.SrcPort.String(),
-					DstPort:  tcp.DstPort.String(),
-					Protocol: "tcp",
+					SrcAddr:  types.IPv4ToInt(ip4.SrcIP),
+					DstAddr:  types.IPv4ToInt(ip4.DstIP),
+					SrcPort:  uint16(tcp.SrcPort),
+					DstPort:  uint16(tcp.DstPort),
+					Protocol: uint8(types.IPProtocolTCP),
 				}
 
 				flowInfo = Stats.GetFlow(fp)
@@ -175,7 +215,7 @@ func main() {
 					}
 
 					flowInfo.Mu.Lock()
-					flowInfo.StartTs = time.Now()
+					flowInfo.StartTsMilli = ci.Timestamp.UnixMilli()
 					flowInfo.Mu.Unlock()
 
 					Stats.AddFlow(fp, flowInfo)
@@ -184,39 +224,52 @@ func main() {
 				flowInfo.Mu.Lock()
 				flowInfo.TotalL2Packets++
 				flowInfo.TotalL3PayloadBytes += int64(ipLength)
-				flowInfo.EndTs = time.Now()
+				flowInfo.EndTsMilli = ci.Timestamp.UnixMilli()
 
-				if !flowInfo.NdpiDetectionCompleted && len(eth.Payload) > 0 {
+				if !flowInfo.NdpiDetectionCompleted {
 					flowInfo.NdpiProcessedPackets++
 					flowInfo.NdpiProcessedBytes += int64(ipLength)
 
-					ts = ci.Timestamp.UnixMilli()
-					ipData = eth.Payload
-
 					// ipData := make([]byte, len(eth.Payload))
 					// copy(ipData, eth.Payload)
-
+					ipData = eth.Payload
+					ts = ci.Timestamp.UnixMilli()
 					ndpiProto = ndpiDM.PacketProcessing(flowInfo.NdpiFlow, ipData, ipLength, ts)
-					if ndpiProto.MasterProtocolId != types.NDPI_PROTOCOL_UNKNOWN || ndpiProto.AppProtocolId != types.NDPI_PROTOCOL_UNKNOWN {
-						flowInfo.NdpiDetectionCompleted = true
 
-						fmt.Println("------")
-						masterProto := ndpiProto.MasterProtocolId.ToName()
-						appProto := ndpiProto.AppProtocolId.ToName()
-						category := ndpiProto.CategoryId.ToName()
+					enoughPackets := false
+					if flowInfo.NdpiProcessedPackets > MaxPacketsTcpDissection {
+						enoughPackets = true
+					}
 
-						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
+					extraDissectionPossible := ndpiDM.IsExtraDissectionPossible(flowInfo.NdpiFlow)
 
-						fpJson, _ := json.MarshalIndent(fp, "", "  ")
-						flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
-						fmt.Println(string(fpJson))
-						fmt.Println(string(flowInfoJson))
+					if enoughPackets || ndpiProto.AppProtocolId != types.NDPI_PROTOCOL_UNKNOWN {
+						if !enoughPackets && extraDissectionPossible {
 
-						ndpiFlowInfo := flowInfo.NdpiFlow.ToNdpiFlowInfo()
-						ndpiFlowInfoString, _ := ndpiFlowInfo.ToString()
-						fmt.Println(ndpiFlowInfoString)
+						} else {
+							if enableGuess && ndpiProto.AppProtocolId == types.NDPI_PROTOCOL_UNKNOWN {
+								ndpiProto, isGuessed = ndpiDM.DetectionGiveup(flowInfo.NdpiFlow, enableGuess)
+								flowInfo.NdpiIsGuessed = isGuessed
+							}
 
-						gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
+							flowInfo.NdpiDetectionCompleted = true
+
+							fmt.Println("------")
+							masterProto := ndpiProto.MasterProtocolId.ToName()
+							appProto := ndpiProto.AppProtocolId.ToName()
+							category := ndpiProto.CategoryId.ToName()
+
+							fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
+
+							fpString := fp.ToString()
+							flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
+							ndpiFlowInfoString := flowInfo.NdpiFlow.ToNdpiFlowInfo().ToString()
+							fmt.Println(fpString)
+							fmt.Println(string(flowInfoJson))
+							fmt.Println(ndpiFlowInfoString)
+
+							gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
+						}
 					}
 				}
 

@@ -155,7 +155,7 @@ type NdpiFlowInfo struct {
 	ProtocolCategory        NdpiCategory
 }
 
-func (f *NdpiFlowInfo) ToString() (string, error) {
+func (f *NdpiFlowInfo) ToString() string {
 	flowInfoExtend := struct {
 		NdpiFlowInfo
 		DetectedProtocolStackString [2]string
@@ -182,12 +182,9 @@ func (f *NdpiFlowInfo) ToString() (string, error) {
 		ProtocolCategoryString:      f.ProtocolCategory.ToName(),
 	}
 
-	flowInfoExtendJson, err := json.MarshalIndent(flowInfoExtend, "", "  ")
-	if err != nil {
-		return "", err
-	}
+	flowInfoExtendJson, _ := json.MarshalIndent(flowInfoExtend, "", "  ")
 
-	return string(flowInfoExtendJson), nil
+	return string(flowInfoExtendJson)
 }
 
 func IPv4ToInt(ip net.IP) uint32 {

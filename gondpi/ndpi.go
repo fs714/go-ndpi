@@ -315,8 +315,8 @@ func (f *NdpiFlow) GetProtocolCategory() types.NdpiCategory {
 	return NdpiCategoryToId(f.NdpiFlowPtr.category)
 }
 
-func (f *NdpiFlow) ToNdpiFlowInfo() types.NdpiFlowInfo {
-	return types.NdpiFlowInfo{
+func (f *NdpiFlow) ToNdpiFlowInfo() *types.NdpiFlowInfo {
+	return &types.NdpiFlowInfo{
 		DetectedProtocolStack:   f.GetDetectedProtocolStack(),
 		GuessedProtocolId:       f.GetGuessedProtocolId(),
 		GuessedHostProtocolId:   f.GetGuessedHostProtocolId(),
