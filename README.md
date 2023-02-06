@@ -3,6 +3,8 @@
 ## 1. Introduction
 This project is a [nDPI](https://github.com/ntop/nDPI) wrapper by golang based on CGO. You can use nDPI by golang to do packet inspection.
 
+It is based on ndpi 4.4.0 release currently.
+
 ## 2. How to use this lib
 ### 2.1 Install nDPI Lib
 Clang lib nDPI should be installed firstly. Ubuntu 22.04 is used in follow guide.

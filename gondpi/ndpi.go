@@ -1,3 +1,7 @@
+// Golang wrapper of ndpi 4.4.0
+//
+// Debian packages needed:
+// apt-get install libpcap-dev libmaxminddb-dev
 package gondpi
 
 /*
