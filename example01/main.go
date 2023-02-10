@@ -162,7 +162,7 @@ func main() {
 		return
 	}
 
-	defer gondpi.NdpiDetectionModuleExit(ndpiDM)
+	defer ndpiDM.Close()
 
 	eth := &layers.Ethernet{}
 	ip4 := &layers.IPv4{}
@@ -268,7 +268,7 @@ func main() {
 							fmt.Println(string(flowInfoJson))
 							fmt.Println(ndpiFlowInfoString)
 
-							gondpi.FreeNdpiFlow(flowInfo.NdpiFlow)
+							flowInfo.NdpiFlow.Close()
 						}
 					}
 				}

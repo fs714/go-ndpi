@@ -53,5 +53,5 @@ func main() {
 	fmt.Println(len(npds))
 	fmt.Println(string(npdsJson))
 
-	gondpi.NdpiDetectionModuleExit(ndpiDM)
+	ndpiDM.Close()
 }

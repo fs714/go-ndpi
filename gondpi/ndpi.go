@@ -120,7 +120,7 @@ func NewNdpiFlow() (*NdpiFlow, error) {
 	return f, nil
 }
 
-func FreeNdpiFlow(f *NdpiFlow) {
+func (f *NdpiFlow) Close() {
 	C.ndpi_flow_struct_free(f.NdpiFlowPtr)
 }
 
@@ -395,7 +395,7 @@ func NdpiDetectionModuleInitialize(prefs uint32, detectionBitmask []uint32) (*Nd
 	return dm, nil
 }
 
-func NdpiDetectionModuleExit(dm *NdpiDetectionModule) {
+func (dm *NdpiDetectionModule) Close() {
 	C.ndpi_detection_module_exit(dm.NdpiPtr)
 }
 
