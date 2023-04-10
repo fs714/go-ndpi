@@ -549,10 +549,10 @@ func (dm *NdpiDetectionModule) DetectionGiveup(flow *NdpiFlow, enableGuess bool)
 		cEnableGuess = 1
 	}
 
-	var cIsProtoGuessed *C.uint8_t
-	*cIsProtoGuessed = 0
+	var cIsProtoGuessed C.uint8_t
+	cIsProtoGuessed = 0
 
-	proto := C.ndpi_detection_giveup(dm.NdpiPtr, flow.NdpiFlowPtr, cEnableGuess, cIsProtoGuessed)
+	proto := C.ndpi_detection_giveup(dm.NdpiPtr, flow.NdpiFlowPtr, cEnableGuess, &cIsProtoGuessed)
 
 	ndpiProto := NdpiProto{
 		MasterProtocolId: types.NdpiProtocol(proto.master_protocol),
@@ -561,7 +561,7 @@ func (dm *NdpiDetectionModule) DetectionGiveup(flow *NdpiFlow, enableGuess bool)
 	}
 
 	isProtoGuessed := false
-	if enableGuess && uint8(*cIsProtoGuessed) == 1 {
+	if enableGuess && uint8(cIsProtoGuessed) == 1 {
 		isProtoGuessed = true
 	}
 
