@@ -1,6 +1,6 @@
 /*
 Example of simple uage:
-- Packet Capture by libpcap
+- Packet Capture by libpcap, from a live interface (-i) or a pcap file (-f)
 - Packet L2 - L4 inspection by gopacket
 - Packet L7 inspection by nDPI
 - Golang map for flow recording
@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/fs714/go-ndpi/gondpi"
@@ -131,19 +132,36 @@ func (s *IfaceStats) GetFlow(fp FlowFingerprint) *FlowInfo {
 
 func main() {
 	var ifaceName string
+	var pcapFile string
 	var enableGuess bool
 	flag.StringVar(&ifaceName, "i", "", "interface name")
+	flag.StringVar(&pcapFile, "f", "", "pcap file to read instead of a live interface")
 	flag.BoolVar(&enableGuess, "g", true, "enable protocol guess or not")
 	flag.Parse()
+
+	if (ifaceName == "") == (pcapFile == "") {
+		fmt.Println("one of -i <interface> or -f <pcap file> is required")
+		return
+	}
 
 	Stats := IfaceStats{
 		FlowMap: map[FlowFingerprint]*FlowInfo{},
 	}
 
-	handle, err := pcap.OpenLive(ifaceName, 65535, true, pcap.BlockForever)
-	if err != nil {
-		fmt.Printf("failed to open live interface %s with err: %s\n", ifaceName, err.Error())
-		return
+	var handle *pcap.Handle
+	var err error
+	if pcapFile != "" {
+		handle, err = pcap.OpenOffline(pcapFile)
+		if err != nil {
+			fmt.Printf("failed to open pcap file %s with err: %s\n", pcapFile, err.Error())
+			return
+		}
+	} else {
+		handle, err = pcap.OpenLive(ifaceName, 65535, true, pcap.BlockForever)
+		if err != nil {
+			fmt.Printf("failed to open live interface %s with err: %s\n", ifaceName, err.Error())
+			return
+		}
 	}
 
 	err = handle.SetBPFFilter("")
@@ -156,7 +174,7 @@ func main() {
 
 	detectionBitmask := gondpi.NewNdpiProtocolBitmask()
 	detectionBitmask = gondpi.NdpiProtocolBitmaskSetAll(detectionBitmask)
-	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(types.NDPI_NO_PREFS, detectionBitmask)
+	ndpiDM, err := gondpi.NewNdpiDetectionModule(types.NDPI_LICENSE_NOT_FOR_PROFIT_LGPL, detectionBitmask)
 	if err != nil {
 		fmt.Printf("failed to initialize ndpi detection module with err: %s\n", err.Error())
 		return
@@ -164,12 +182,29 @@ func main() {
 
 	defer ndpiDM.Close()
 
+	if !enableGuess {
+		err = ndpiDM.SetConfig("", "dpi.guess_on_giveup", "0")
+		if err != nil {
+			fmt.Printf("failed to disable protocol guess with err: %s\n", err.Error())
+			return
+		}
+	}
+
+	err = ndpiDM.Finalize()
+	if err != nil {
+		fmt.Printf("failed to finalize ndpi detection module with err: %s\n", err.Error())
+		return
+	}
+
 	eth := &layers.Ethernet{}
 	ip4 := &layers.IPv4{}
 	tcp := &layers.TCP{}
 	udp := &layers.UDP{}
 	payload := &gopacket.Payload{}
 	parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, eth, ip4, tcp, udp, payload)
+	// gopacket guesses application layers (e.g. TLS on port 443) which have no decoder here:
+	// ignore them, nDPI inspects the payload
+	parser.IgnoreUnsupported = true
 	decoded := make([]gopacket.LayerType, 0, 4)
 
 	var data []byte
@@ -183,6 +218,9 @@ func main() {
 	var isGuessed bool
 	for {
 		data, ci, err = handle.ZeroCopyReadPacketData()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			fmt.Printf("error getting packet: %s\n", err.Error())
 			continue
@@ -243,33 +281,31 @@ func main() {
 
 					extraDissectionPossible := ndpiDM.IsExtraDissectionPossible(flowInfo.NdpiFlow)
 
-					if enoughPackets || ndpiProto.AppProtocolId != types.NDPI_PROTOCOL_UNKNOWN {
-						if !enoughPackets && extraDissectionPossible {
-
-						} else {
-							if enableGuess && ndpiProto.AppProtocolId == types.NDPI_PROTOCOL_UNKNOWN {
-								ndpiProto, isGuessed = ndpiDM.DetectionGiveup(flowInfo.NdpiFlow, enableGuess)
-								flowInfo.NdpiIsGuessed = isGuessed
-							}
-
-							flowInfo.NdpiDetectionCompleted = true
-
-							fmt.Println("------")
-							masterProto := ndpiProto.MasterProtocolId.ToName()
-							appProto := ndpiProto.AppProtocolId.ToName()
-							category := ndpiProto.CategoryId.ToName()
-
-							fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
-
-							fpString := fp.ToString()
-							flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
-							ndpiFlowInfoString := flowInfo.NdpiFlow.ToNdpiFlowInfo().ToString()
-							fmt.Println(fpString)
-							fmt.Println(string(flowInfoJson))
-							fmt.Println(ndpiFlowInfoString)
-
-							flowInfo.NdpiFlow.Close()
+					// NDPI_STATE_CLASSIFIED means the protocol is known, but nDPI may still
+					// want more packets to extract metadata (extra dissection)
+					if enoughPackets || (ndpiProto.State == types.NDPI_STATE_CLASSIFIED && !extraDissectionPossible) {
+						if ndpiProto.State != types.NDPI_STATE_CLASSIFIED {
+							ndpiProto, isGuessed = ndpiDM.DetectionGiveup(flowInfo.NdpiFlow)
+							flowInfo.NdpiIsGuessed = isGuessed
 						}
+
+						flowInfo.NdpiDetectionCompleted = true
+
+						fmt.Println("------")
+						masterProto := ndpiProto.MasterProtocolId.ToName()
+						appProto := ndpiProto.AppProtocolId.ToName()
+						category := ndpiProto.CategoryId.ToName()
+
+						fmt.Printf("Master Protocol: %s, App Protocol: %s, Category: %s\n", masterProto, appProto, category)
+
+						fpString := fp.ToString()
+						flowInfoJson, _ := json.MarshalIndent(flowInfo, "", "  ")
+						ndpiFlowInfoString := flowInfo.NdpiFlow.ToNdpiFlowInfo().ToString()
+						fmt.Println(fpString)
+						fmt.Println(string(flowInfoJson))
+						fmt.Println(ndpiFlowInfoString)
+
+						flowInfo.NdpiFlow.Close()
 					}
 				}
 

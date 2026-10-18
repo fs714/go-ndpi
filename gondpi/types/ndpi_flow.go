@@ -15,20 +15,18 @@ type NdpiFlowHttp struct {
 	RequestContentType  string
 	ResponseContentType string
 	UserAgent           string
+	Server              string
+	Referer             string
+	Host                string
 	DetectedOs          string
 	XForwardedAddr      string
+	Filename            string
 }
 
 type NdpiFlowKerberosBuf struct {
 	PktBuf        []byte
 	PktBufMaxLen  uint16
 	PktBufCurrLen uint16
-}
-
-type NdpiFlowStun struct {
-	NumUdpPkts         uint8
-	NumBindingRequests uint8
-	NumProcessedPkts   uint16
 }
 
 type NdpiFlowDns struct {
@@ -122,64 +120,67 @@ type NdpiFlowSnmp struct {
 }
 
 type NdpiFlowInfo struct {
-	DetectedProtocolStack   [2]NdpiProtocol
-	GuessedProtocolId       NdpiProtocol
-	GuessedHostProtocolId   NdpiProtocol
-	GuessedCategoryId       NdpiCategory
-	GuessedHeaderCategoryId NdpiCategory
-	L4Protocol              IPProto
-	IsProtoIdAlreadyGuessed bool
-	IsHostAlreadyGuessed    bool
-	IsFailWithUnknow        bool
-	IsInitFinished          bool
-	IsSetupPacketDirection  bool
-	IsPacketDirection       bool
-	IsCheckExtraPackets     bool
-	IsIpv6                  bool
-	Confidence              NdpiConfidence
-	NextTcpSeqNR            [2]uint16
-	SrcAddr                 uint32
-	DstAddr                 uint32
-	SrcPort                 uint16
-	DstPort                 uint16
-	MaxExtraPacketsToCheck  uint8
-	NumExtraPacketsChecked  uint8
-	ProcessedPktNum         uint16
-	LastPacketTimeMS        uint64
-	Entropy                 float32
-	FlowExtraInfo           string
-	HostServerName          string
-	Http                    NdpiFlowHttp
-	KerberosBuf             NdpiFlowKerberosBuf
-	Stun                    NdpiFlowStun
-	ProtocolCategory        NdpiCategory
+	DetectedProtocolStack    [2]NdpiProtocol
+	ClassificationState      NdpiClassificationState
+	GuessedProtocolId        NdpiProtocol
+	GuessedProtocolIdByIp    NdpiProtocol
+	GuessedHeaderCategoryId  NdpiCategory
+	L4Protocol               IPProto
+	IsProtoIdAlreadyGuessed  bool
+	IsProtocolWasGuessed     bool
+	IsInitFinished           bool
+	IsClientPacketDirection  bool
+	IsPacketDirection        bool
+	IsIpv6                   bool
+	IsFirstPktFullyEncrypted bool
+	IsAlreadyGaveup          bool
+	Confidence               NdpiConfidence
+	ClientAddr               uint32
+	ServerAddr               uint32
+	ClientPort               uint16
+	ServerPort               uint16
+	MaxExtraPacketsToCheck   uint16
+	NumExtraPacketsChecked   uint16
+	ProcessedPktNum          uint16
+	LastPacketTimeMS         uint64
+	Entropy                  float32
+	HostServerName           string
+	Risk                     uint64
+	Http                     NdpiFlowHttp
+	KerberosBuf              NdpiFlowKerberosBuf
+	ProtocolCategory         NdpiCategory
+	ProtocolBreed            NdpiProtocolBreed
 }
 
 func (f *NdpiFlowInfo) ToString() string {
 	flowInfoExtend := struct {
 		NdpiFlowInfo
 		DetectedProtocolStackString [2]string
+		ClassificationStateString   string
 		GuessedProtocolString       string
-		GuessedHostProtocolString   string
-		GuessedCategoryString       string
+		GuessedProtocolByIpString   string
 		GuessedHeaderCategoryString string
 		L4ProtocolString            string
-		SrcAddrString               string
-		DstAddrString               string
+		ConfidenceString            string
+		ClientAddrString            string
+		ServerAddrString            string
 		LastPacketTimeMSString      string
 		ProtocolCategoryString      string
+		ProtocolBreedString         string
 	}{
 		NdpiFlowInfo:                *f,
 		DetectedProtocolStackString: [2]string{f.DetectedProtocolStack[0].ToName(), f.DetectedProtocolStack[1].ToName()},
+		ClassificationStateString:   f.ClassificationState.ToName(),
 		GuessedProtocolString:       f.GuessedProtocolId.ToName(),
-		GuessedHostProtocolString:   f.GuessedHostProtocolId.ToName(),
-		GuessedCategoryString:       f.GuessedCategoryId.ToName(),
+		GuessedProtocolByIpString:   f.GuessedProtocolIdByIp.ToName(),
 		GuessedHeaderCategoryString: f.GuessedHeaderCategoryId.ToName(),
 		L4ProtocolString:            f.L4Protocol.ToName(),
-		SrcAddrString:               IntToIPv4(f.SrcAddr).String(),
-		DstAddrString:               IntToIPv4(f.DstAddr).String(),
+		ConfidenceString:            f.Confidence.ToName(),
+		ClientAddrString:            IntToIPv4(f.ClientAddr).String(),
+		ServerAddrString:            IntToIPv4(f.ServerAddr).String(),
 		LastPacketTimeMSString:      time.Unix(0, int64(f.LastPacketTimeMS)*1000000).Format(time.RFC3339Nano),
 		ProtocolCategoryString:      f.ProtocolCategory.ToName(),
+		ProtocolBreedString:         f.ProtocolBreed.ToName(),
 	}
 
 	flowInfoExtendJson, _ := json.MarshalIndent(flowInfoExtend, "", "  ")

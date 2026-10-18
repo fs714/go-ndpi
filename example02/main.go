@@ -37,7 +37,7 @@ func main() {
 	detectionBitmask = gondpi.NdpiProtocolBitmaskDel(detectionBitmask, types.NDPI_PROTOCOL_SSH)
 	fmt.Printf("del ssh: %v\n", detectionBitmask)
 
-	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(types.NDPI_NO_PREFS, detectionBitmask)
+	ndpiDM, err := gondpi.NdpiDetectionModuleInitialize(types.NDPI_LICENSE_NOT_FOR_PROFIT_LGPL, detectionBitmask)
 	if err != nil {
 		fmt.Printf("failed to initialize ndpi detection module with err: %s\n", err.Error())
 		return

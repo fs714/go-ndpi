@@ -10,6 +10,8 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+# but keep nDPI expected results used by tests
+!gondpi/testdata/**/*.out
 
 # Dependency directories (remove the comment below to include it)
 # vendor/

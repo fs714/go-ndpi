@@ -1,0 +1,70 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  NDPI_VERSION: "6.0"
+  # Inside the workspace, but ignored by the go tool (leading dot)
+  NDPI_PREFIX: ${{ github.workspace }}/.ndpi
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimum Go version from go.mod and the latest stable one
+        go: [go.mod, stable]
+    name: Test (Go ${{ matrix.go }})
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake libtool pkg-config make gcc \
+            libpcap-dev libmaxminddb-dev
+
+      - name: Cache nDPI
+        id: cache-ndpi
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.NDPI_PREFIX }}
+          key: ndpi-${{ env.NDPI_VERSION }}-ubuntu-24.04
+
+      - name: Build nDPI
+        if: steps.cache-ndpi.outputs.cache-hit != 'true'
+        run: |
+          curl -sSfL "https://github.com/ntop/nDPI/archive/refs/tags/${NDPI_VERSION}.tar.gz" | tar xz -C "${RUNNER_TEMP}"
+          cd "${RUNNER_TEMP}/nDPI-${NDPI_VERSION}"
+          ./autogen.sh
+          ./configure --prefix="${NDPI_PREFIX}" --with-maxminddb
+          make -j"$(nproc)" -C src/lib
+          make -C src/lib install
+
+      - name: Set cgo flags
+        run: |
+          echo "CGO_CFLAGS=-I${NDPI_PREFIX}/include" >> "${GITHUB_ENV}"
+          echo "CGO_LDFLAGS=-L${NDPI_PREFIX}/lib" >> "${GITHUB_ENV}"
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go != 'go.mod' && matrix.go || '' }}
+          go-version-file: ${{ matrix.go == 'go.mod' && 'go.mod' || '' }}
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -v ./...
